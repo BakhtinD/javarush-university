@@ -2,20 +2,26 @@ package com.javarush.example;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collection;
 
 public class TransactionExample {
 
     public static void main(String[] args) throws SQLException {
 
+        // Загружаем переменные окружения из .env, который лежит на одном уровне с pom.xml в \m4-level-08
+        String projectRoot = Paths.get("m4-level-08").toAbsolutePath().toString();
+        Dotenv dotenv = Dotenv.configure()
+                .directory(projectRoot)
+                .load();
+
         // Данные для подключения к БД
-        String url = "jdbc:mysql://localhost:3306/sakila";
-        String user = "root";       //
-        String password = "sakila"; //
+        String url = dotenv.get("DB_URL");
+        String user = dotenv.get("DB_USER");
+        String password = dotenv.get("DB_PASSWORD");
 
         Connection connection = null;
         try {
