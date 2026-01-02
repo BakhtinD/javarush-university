@@ -35,6 +35,8 @@
 11. Уровень 14 Thread Pool [m2-level-14](m2-level-14)  
 12. Уровень 15 Внутренние Вложенные классы [m2-level-15](m2-level-15)  
 13. Уровень 17 Reflection API [m2-level-17](m2-level-17)  
+14. Уровень 18 Аннотации в Java [m2-level-18](m2-level-18)  
+
 
 
 
