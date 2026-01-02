@@ -36,6 +36,8 @@
 12. Уровень 15 Внутренние Вложенные классы [m2-level-15](m2-level-15)  
 13. Уровень 17 Reflection API [m2-level-17](m2-level-17)  
 14. Уровень 18 Аннотации в Java [m2-level-18](m2-level-18)  
+15. Уровень 19 Sockets [m2-level-19](m2-level-19)  
+
 
 
 
