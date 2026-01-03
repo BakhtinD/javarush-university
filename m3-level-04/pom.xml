@@ -17,4 +17,39 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <!-- JUnit Jupiter API (для аннотаций @Test, assertEquals и т.д.) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.11.3</version> <!-- актуальная версия на 2026 год -->
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit Jupiter Test Engine (для запуска тестов в Maven) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.11.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Параметризированные тесты -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>5.11.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Библиотека Mockito -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>4.2.0</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
 </project>
