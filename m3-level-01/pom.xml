@@ -2,19 +2,402 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <!--
+        =====================================================================
+        ОБЯЗАТЕЛЬНЫЕ ПАРАМЕТРЫ (4 параметра, как обсуждали на слайде 24)
+        =====================================================================
+    -->
     <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Родительский POM - мы часть многомодульного проекта.
+        Наследуем общие настройки, зависимости и плагины.
+    -->
     <parent>
         <groupId>com.javarush</groupId>
         <artifactId>javarush-university</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 
+    <!--
+        Идентификатор нашего модуля (артефакта).
+        По этому имени мы сможем подключить этот модуль как зависимость в других.
+    -->
     <artifactId>m3-level-01</artifactId>
 
+    <!--
+        =====================================================================
+        СЕКЦИЯ PROPERTIES (переменные, обсуждали на слайдах 21-22)
+        =====================================================================
+        Здесь объявляем все переменные, которые будем переиспользовать.
+        Централизованное управление версиями и настройками.
+    -->
     <properties>
+        <!--
+            ВЕРСИИ JAVA (обязательно указывать, иначе Maven возьмет 1.5!)
+            Используем встроенное свойство maven-compiler-plugin
+        -->
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+
+        <!--
+            КОДИРОВКИ (решаем проблему с кириллицей и разными ОС)
+            Без этого на Windows будут кракозябры вместо русских букв
+        -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!--
+            КАСТОМНЫЕ ПЕРЕМЕННЫЕ ПРОЕКТА
+            Все версии библиотек в одном месте - легко обновлять!
+        -->
+        <!-- Пример: если бы у нас были зависимости -->
+        <!-- <junit.version>5.9.1</junit.version> -->
+        <!-- <logback.version>1.4.5</logback.version> -->
+
+        <!--
+            МЕТАДАННЫЕ ПРОЕКТА ДЛЯ JAR-ФАЙЛА
+            Будем использовать в настройках плагинов
+        -->
+        <main.class>com.javarush.m3level01.HelloWorld</main.class>
+        <app.name>HelloWorld Demo</app.name>
+
+        <!--
+            ВСТРОЕННЫЕ СВОЙСТВА MAVEN (предопределенные, слайд 22)
+            Можем использовать, но обычно не объявляем здесь
+            ${project.version} - версия проекта (наследуется от родителя)
+            ${project.build.directory} - папка target/
+            ${basedir} - корневая папка проекта
+        -->
     </properties>
 
+    <!--
+        =====================================================================
+        СЕКЦИЯ DEPENDENCIES (зависимости, обсуждали на слайде 14)
+        =====================================================================
+        Здесь подключаем внешние библиотеки.
+        Комментируем секцию, так как у нас простой HelloWorld.
+        Но показываем структуру для примера.
+    -->
+    <!--
+    <dependencies>
+        <!-
+            Пример подключения зависимости:
+            1. Ищем на https://mvnrepository.com/
+            2. Копируем координаты (groupId, artifactId, version)
+            3. Вставляем сюда
+            4. Maven скачает из репозитория автоматически
+
+            Структура:
+            <dependency>
+                <groupId>    - идентификатор группы (часто домен наоборот)
+                <artifactId> - идентификатор артефакта (имя библиотеки)
+                <version>    - версия (лучше использовать переменную из properties)
+                <scope>      - область видимости (compile, test, provided, runtime)
+            </dependency>
+        ->
+
+        <!- Пример тестовой зависимости ->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>  <!- Только для тестов, не попадет в итоговый JAR ->
+        </dependency>
+
+        <!- Пример основной зависимости ->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+            <!- scope по умолчанию = compile (попадет в JAR) ->
+        </dependency>
+    </dependencies>
+    -->
+
+    <!--
+        =====================================================================
+        СЕКЦИЯ BUILD (плагины и сборка, обсуждали на слайдах 17-20)
+        =====================================================================
+        Здесь настраиваем процесс сборки, добавляем плагины.
+        Необязательная секция, но очень полезная.
+    -->
+    <build>
+        <!--
+            Имя итогового JAR-файла.
+            Используем предопределенные переменные Maven.
+        -->
+        <finalName>${project.artifactId}-${project.version}</finalName>
+
+        <!--
+            ПЛАГИНЫ (обсуждали на слайде 19)
+            Плагины расширяют функциональность Maven.
+            Каждый плагин имеет цели (goals), которые выполняют конкретные задачи.
+        -->
+        <plugins>
+            <!--
+                ПЛАГИН 1: maven-compiler-plugin
+                Цель: компиляция Java-кода
+                Привязка к фазе: compile (выполняется автоматически)
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <!--
+                        Используем переменные из секции properties.
+                        Можно было бы указать напрямую <source>17</source>,
+                        но через переменные гибче.
+                    -->
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+
+                    <!-- Дополнительные параметры компилятора -->
+                    <compilerArgs>
+                        <arg>-parameters</arg>  <!-- Сохранять имена параметров методов (для Reflection) -->
+                        <arg>-Xlint:unchecked</arg>  <!-- Включить предупреждения -->
+                    </compilerArgs>
+                </configuration>
+                <!--
+                    Можно добавить executions для привязки дополнительных целей,
+                    но для компиляции это обычно не нужно.
+                -->
+            </plugin>
+
+            <!--
+                ПЛАГИН 2: maven-jar-plugin
+                Цель: создание JAR-файла
+                Привязка к фазе: package (выполняется автоматически)
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <!--
+                            Манифест-файл (META-INF/MANIFEST.MF).
+                            Содержит метаинформацию о JAR.
+                        -->
+                        <manifest>
+                            <!--
+                                Главный класс приложения.
+                                Позволяет запускать JAR командой: java -jar наш-файл.jar
+                            -->
+                            <mainClass>${main.class}</mainClass>
+
+                            <!-- Добавить стандартную информацию о реализации -->
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                        </manifest>
+                        <manifestEntries>
+                            <!-- Дополнительные записи в манифест -->
+                            <Implementation-Title>${app.name}</Implementation-Title>
+                            <Implementation-Version>${project.version}</Implementation-Version>
+                            <Built-By>${user.name}</Built-By>  <!-- Системное свойство: имя пользователя ОС -->
+                            <Build-Date>${maven.build.timestamp}</Build-Date>
+
+                            <!-- Пример: если бы была зависимость от модулей -->
+                            <!-- <Class-Path>lib/dependency1.jar lib/dependency2.jar</Class-Path> -->
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!--
+                ПЛАГИН 3: maven-assembly-plugin (для создания FAT JAR)
+                Цель: создание "жирного" JAR со всеми зависимостями
+                Привязка к фазе: package (будет создан дополнительный JAR)
+
+                FAT JAR (Uber JAR) - содержит все зависимости внутри себя.
+                Удобно для распространения: один файл, ничего дополнительно не нужно.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <!-- Дескриптор сборки: как собирать FAT JAR -->
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+
+                    <!-- Главный класс для манифеста -->
+                    <archive>
+                        <manifest>
+                            <mainClass>${main.class}</mainClass>
+                        </manifest>
+                    </archive>
+
+                    <!--
+                        Итоговое имя файла.
+                        Будет создан два JAR:
+                        1. обычный: m3-level-01-1.0-SNAPSHOT.jar
+                        2. FAT:    m3-level-01-1.0-SNAPSHOT-jar-with-dependencies.jar
+                    -->
+                    <finalName>${project.artifactId}-${project.version}</finalName>
+                    <appendAssemblyId>true</appendAssemblyId>  <!-- Добавить суффикс -jar-with-dependencies -->
+                </configuration>
+                <executions>
+                    <!--
+                        Привязка цели assembly:single к фазе package.
+                        При запуске mvn package будет создан и обычный JAR, и FAT JAR.
+                    -->
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>  <!-- Фаза, на которой выполняется цель -->
+                        <goals>
+                            <goal>single</goal>  <!-- Цель плагина -->
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+                ПЛАГИН 4: maven-surefire-plugin
+                Цель: запуск unit-тестов
+                Привязка к фазе: test (выполняется автоматически)
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M9</version>
+                <configuration>
+                    <!--
+                        Системные свойства для тестов.
+                        Можно передавать параметры в тестовое окружение.
+                    -->
+                    <systemPropertyVariables>
+                        <test.mode>integration</test.mode>
+                    </systemPropertyVariables>
+
+                    <!-- Включить/выключить тесты -->
+                    <skipTests>false</skipTests>  <!-- true - пропустить все тесты -->
+
+                    <!--
+                        Паттерны для включения/исключения тестов.
+                        Полезно для запуска только определённых тестов.
+                    -->
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!--
+                ПЛАГИН 5: exec-maven-plugin
+                Цель: запуск Java-приложения прямо из Maven
+                Полезно для демонстраций и быстрого тестирования.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>${main.class}</mainClass>
+                    <!--
+                        Аргументы командной строки для приложения.
+                        Можно передавать параметры.
+                    -->
+                    <commandlineArgs>arg1 arg2</commandlineArgs>
+                </configuration>
+                <!--
+                    Пример цели: mvn exec:java
+                    Запустит наше приложение без создания JAR-файла.
+                -->
+            </plugin>
+        </plugins>
+
+        <!--
+            РЕСУРСЫ И ФИЛЬТРАЦИЯ
+            Позволяет подставлять значения переменных в ресурсные файлы.
+        -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>  <!-- Включить подстановку переменных -->
+                <includes>
+                    <include>**/*.properties</include>
+                    <include>**/*.xml</include>
+                </includes>
+            </resource>
+        </resources>
+    </build>
+
+    <!--
+        =====================================================================
+        СЕКЦИЯ REPORTING (отчеты, часть site lifecycle)
+        =====================================================================
+        Настройки генерации отчетов при mvn site.
+        Полезно для документации и анализа кода.
+    -->
+    <reporting>
+        <plugins>
+            <!-- Генерация JavaDoc -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.12.0</version>
+                <configuration>
+                    <show>private</show>  <!-- Показывать private-методы в документации -->
+                    <nohelp>true</nohelp> <!-- Не показывать справочную страницу -->
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+
+            <!--
+                Плагины для отчетов о качестве кода:
+                - maven-checkstyle-plugin (стиль кодирования)
+                - maven-pmd-plugin (статический анализ)
+                - jacoco-maven-plugin (покрытие кода тестами)
+                Обычно подключаются в корпоративных проектах.
+            -->
+        </plugins>
+    </reporting>
+
+    <!--
+        =====================================================================
+        ПРОФИЛИ (profiles) - БОНУС
+        =====================================================================
+        Позволяют иметь разные конфигурации для разных сред/целей.
+        Например: разработка, тестирование, продакшн.
+    -->
+    <profiles>
+        <!-- Профиль для разработки -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>  <!-- Активен по умолчанию -->
+            </activation>
+            <properties>
+                <environment>development</environment>
+                <debug.mode>true</debug.mode>
+            </properties>
+        </profile>
+
+        <!-- Профиль для продакшна -->
+        <profile>
+            <id>prod</id>
+            <properties>
+                <environment>production</environment>
+                <debug.mode>false</debug.mode>
+            </properties>
+            <build>
+                <plugins>
+                    <!--
+                        В продакшн-профиле можно:
+                        1. Минимизировать логи
+                        2. Отключить отладочную информацию
+                        3. Использовать оптимизации
+                    -->
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
