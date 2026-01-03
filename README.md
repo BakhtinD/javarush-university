@@ -43,6 +43,7 @@
 2. Уровень 2 Maven, часть 2 [m3-level-02](m3-level-02)  
 3. Уровень 3 JUnit 5 [m3-level-03](m3-level-03)  
 4. Уровень 4 Mockito  [m3-level-04](m3-level-04)  
+5. Уровень 5 Логирование [m3-level-05](m3-level-05)  
 
 18. Паттерны проектирования 2 [m3-level-17](m3-level-17)  
 18. Уровень 18 Работа с памятью в Java [m3-level-18](m3-level-18)  
