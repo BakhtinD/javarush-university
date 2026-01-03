@@ -1,0 +1,10 @@
+input,expected,description
+pass123,true,Пароль с цифрой
+password,false,Пароль без цифры
+123456,true,Только цифры
+null,false,Null значение
+a1b,true,Цифра в середине
+test,false,Нет цифр
+user@123,true,Email с цифрами
+special!,false,Спецсимволы без цифр
+test123test,true,Цифры внутри текста
