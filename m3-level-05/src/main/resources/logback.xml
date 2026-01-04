@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 1. Аппендер для консоли (стандартный, но мы его немного настроим) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- Меняем формат вывода. %logger{36} - имя логгера (макс 36 символов) -->
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 2. Аппендер для файла (новая фича - просто добавляем) -->
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>myapp.log</file> <!-- Имя файла -->
+        <encoder>
+            <pattern>%date %level [%thread] %logger{10} [%file:%line] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 3. Настраиваем корневой логгер. Теперь он пишет и в консоль, и в файл. -->
+    <!-- Уровень можно поднять до INFO, чтобы отключить DEBUG в продакшене. -->
+    <root level="debug">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- 4. Пример продвинутой фильтрации (демонстрация фичи) -->
+    <!-- Отключаем INFO и ниже для пакета com.example.noisy -->
+    <logger name="com.example.noisy" level="WARN" />
+</configuration>

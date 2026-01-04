@@ -1,0 +1,38 @@
+2026-01-04 13:06:18,892 DEBUG [main] c.j.e.LogbackDemo [LogbackDemo.java:16] - Сообщение DEBUG (видно благодаря умолчаниям Logback!).
+2026-01-04 13:06:18,893 INFO [main] c.j.e.LogbackDemo [LogbackDemo.java:17] - Сообщение INFO.
+2026-01-04 13:06:18,894 WARN [main] c.j.e.LogbackDemo [LogbackDemo.java:18] - Сообщение WARN.
+2026-01-04 13:06:18,894 ERROR [main] c.j.e.LogbackDemo [LogbackDemo.java:19] - Сообщение ERROR.
+2026-01-04 13:06:18,895 ERROR [main] c.j.e.LogbackDemo [LogbackDemo.java:25] - Ошибка арифметики при вычислении
+java.lang.ArithmeticException: / by zero
+	at com.javarush.example.LogbackDemo.main(LogbackDemo.java:23)
+2026-01-04 13:06:18,895 DEBUG [main] c.j.e.LogbackDemo [LogbackDemo.java:32] - Данные для отладки: очень_длинная_строка
+2026-01-04 13:06:18,895 INFO [main] c.j.e.LogbackDemo [LogbackDemo.java:35] - Пользователь Иван совершил действие вход в 12:00
+2026-01-04 13:12:50,376 DEBUG [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:15] - Уровень DEBUG: Значение переменной x = 42, путь выполнения метода ABC.
+2026-01-04 13:12:50,378 INFO [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:16] - Уровень INFO: Приложение успешно запущено. Конфигурация загружена.
+2026-01-04 13:12:50,378 WARN [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:17] - Уровень WARN: Кэш почти полон (занято 95%). Рассмотрите увеличение размера.
+2026-01-04 13:12:50,378 ERROR [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:18] - Уровень ERROR: Не удалось сохранить данные пользователя user123. Операция отменена.
+2026-01-04 13:12:50,379 INFO [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:54] - [Демо] Вызов processOrder в среде РАЗРАБОТКА (уровень DEBUG). Уровень фильтра = DEBUG.
+2026-01-04 13:12:50,379 DEBUG [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:31] - Обработка заказа ORD-D на сумму 15000.0.
+2026-01-04 13:12:50,380 WARN [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:34] - Крупный заказ ORD-D на сумму 15000.0. Требуется дополнительная проверка.
+2026-01-04 13:12:50,380 INFO [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:37] - Заказ ORD-D успешно обработан.
+2026-01-04 13:12:50,380 INFO [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:54] - [Демо] Вызов processOrder в среде ТЕСТИРОВАНИЕ (уровень INFO). Уровень фильтра = INFO.
+2026-01-04 13:12:50,380 DEBUG [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:31] - Обработка заказа ORD-I на сумму 15000.0.
+2026-01-04 13:12:50,380 WARN [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:34] - Крупный заказ ORD-I на сумму 15000.0. Требуется дополнительная проверка.
+2026-01-04 13:12:50,380 INFO [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:37] - Заказ ORD-I успешно обработан.
+2026-01-04 13:12:50,380 INFO [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:54] - [Демо] Вызов processOrder в среде ПРОДАКШЕН (уровень WARN). Уровень фильтра = WARN.
+2026-01-04 13:12:50,380 DEBUG [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:31] - Обработка заказа ORD-W на сумму 15000.0.
+2026-01-04 13:12:50,380 WARN [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:34] - Крупный заказ ORD-W на сумму 15000.0. Требуется дополнительная проверка.
+2026-01-04 13:12:50,380 INFO [main] c.j.e.LogLevelsDemo [LogLevelsDemo.java:37] - Заказ ORD-W успешно обработан.
+2026-01-04 13:17:10,064 DEBUG [main] c.j.e.SimpleLogDemo [SimpleLogDemo.java:13] - Начинаю обработку запроса ID=123
+2026-01-04 13:17:10,066 INFO [main] c.j.e.SimpleLogDemo [SimpleLogDemo.java:16] - Пользователь ivanov вошел в систему
+2026-01-04 13:25:05,264 INFO [main] c.j.e.BestPracticesLogging [BestPracticesLogging.java:12] - Приложение запущено. Профиль: dev, PID: 91489
+2026-01-04 13:25:05,317 INFO [main] c.j.e.BestPracticesLogging [BestPracticesLogging.java:49] - Подключение к БД установлено
+2026-01-04 13:25:05,317 WARN [main] c.j.e.BestPracticesLogging [BestPracticesLogging.java:59] - Неудачная попытка входа: admin
+2026-01-04 13:25:05,318 DEBUG [main] c.j.e.BestPracticesLogging [BestPracticesLogging.java:66] - Обработка данных: valid
+2026-01-04 13:25:05,318 INFO [pool-1-thread-1] c.j.e.BestPracticesLogging [BestPracticesLogging.java:27] - [Фоновая задача] Начало обработки
+2026-01-04 13:25:05,319 ERROR [main] c.j.e.BestPracticesLogging [BestPracticesLogging.java:69] - Ошибка обработки запроса. Данные: null
+java.lang.IllegalArgumentException: Данные null
+	at com.javarush.example.BestPracticesLogging.processRequest(BestPracticesLogging.java:65)
+	at com.javarush.example.BestPracticesLogging.main(BestPracticesLogging.java:38)
+2026-01-04 13:25:05,320 INFO [main] c.j.e.BestPracticesLogging [BestPracticesLogging.java:42] - Приложение завершает работу
+2026-01-04 13:25:05,423 INFO [pool-1-thread-1] c.j.e.BestPracticesLogging [BestPracticesLogging.java:29] - [Фоновая задача] Успешно завершена
