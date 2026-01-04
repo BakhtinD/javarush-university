@@ -44,6 +44,9 @@
 3. Уровень 3 JUnit 5 [m3-level-03](m3-level-03)  
 4. Уровень 4 Mockito  [m3-level-04](m3-level-04)  
 5. Уровень 5 Логирование [m3-level-05](m3-level-05)  
+6. 
+7. 
+8. Уровень 10 HttpClient [m3-level-10](m3-level-10)  
 
 18. Паттерны проектирования 2 [m3-level-17](m3-level-17)  
 18. Уровень 18 Работа с памятью в Java [m3-level-18](m3-level-18)  
