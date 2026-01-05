@@ -81,6 +81,11 @@
                 <configuration>
                     <port>8080</port>
                     <path>/</path>
+                    <!-- Настройка Tomcat на работу с UTF-8 -->
+                    <uriEncoding>UTF-8</uriEncoding>
+                    <systemProperties>
+                        <file.encoding>UTF-8</file.encoding>
+                    </systemProperties>
                 </configuration>
             </plugin>
         </plugins>
