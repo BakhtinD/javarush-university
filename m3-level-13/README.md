@@ -21,3 +21,7 @@ curl http://localhost:8080/hello
 curl "http://localhost:8080/simple.jsp?name=Jon"
 ```
 
+4. Пример кастомного Тэга
+```bash
+curl http://localhost:8080/hello-tag-demo.jsp
+```
