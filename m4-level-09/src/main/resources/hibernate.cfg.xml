@@ -4,17 +4,22 @@
         "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
     <session-factory>
-        <!-- 1. Параметры подключения к БД (H2 in-memory) -->
-        <property name="connection.driver_class">org.h2.Driver</property>
-        <property name="connection.url">jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1</property>
-        <property name="connection.username">sa</property>
-        <property name="connection.password"></property>
+        <!-- 1. Параметры подключения к MySQL -->
+        <property name="connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="connection.url">jdbc:mysql://localhost:3306/sakila</property>
+        <property name="connection.username">root</property>
+        <property name="connection.password">sakila</property>
 
-        <!-- 2. Диалект SQL (Слайд 21) -->
-        <property name="dialect">org.hibernate.dialect.H2Dialect</property>
+        <!-- 2. Диалект MySQL (Слайд 21) -->
+        <property name="dialect">org.hibernate.dialect.MySQL8Dialect</property>
 
         <!-- 3. Настройки пула соединений (минимальные для демо) -->
         <property name="connection.pool_size">1</property>
+
+        <!-- 4. Настройки кодировки (важно для MySQL) -->
+        <property name="hibernate.connection.characterEncoding">utf8</property>
+        <property name="hibernate.connection.CharSet">utf8</property>
+        <property name="hibernate.connection.useUnicode">true</property>
 
         <!-- 4. Автоматическое создание схемы (Слайд 19) -->
         <property name="hbm2ddl.auto">create-drop</property> <!-- create-drop для демо, в production так не делают! -->
