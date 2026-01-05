@@ -59,3 +59,4 @@
 1. Уровень 1 Базы данных и SQL [m4-level-01](m4-level-01)  
 2. Уровень 2 Сложные SQL-запросы [m4-level-02](m4-level-02)  
 3. Уровень 7 JDBC [m4-level-07](m4-level-07)  
+4. Уровень 9. ORM аннотации, Entity, Hibernate [m4-level-09](m4-level-09)  
