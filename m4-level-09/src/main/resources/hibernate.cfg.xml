@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+        <!-- 1. Параметры подключения к БД (H2 in-memory) -->
+        <property name="connection.driver_class">org.h2.Driver</property>
+        <property name="connection.url">jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1</property>
+        <property name="connection.username">sa</property>
+        <property name="connection.password"></property>
+
+        <!-- 2. Диалект SQL (Слайд 21) -->
+        <property name="dialect">org.hibernate.dialect.H2Dialect</property>
+
+        <!-- 3. Настройки пула соединений (минимальные для демо) -->
+        <property name="connection.pool_size">1</property>
+
+        <!-- 4. Автоматическое создание схемы (Слайд 19) -->
+        <property name="hbm2ddl.auto">create-drop</property> <!-- create-drop для демо, в production так не делают! -->
+
+        <!-- 5. Логирование SQL (Слайд 20) -->
+        <property name="show_sql">true</property>
+        <property name="format_sql">true</property>
+
+        <!-- 6. Указание Entity-классов (Слайд 13) -->
+        <mapping class="com.javarush.entity.User"/>
+    </session-factory>
+</hibernate-configuration>
