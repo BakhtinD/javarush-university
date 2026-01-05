@@ -1,17 +1,23 @@
+# Уровень 13 JSP JSTL
 
-
-html
-```angular2html
-http://localhost:8080/index.html
+Запуск Tomcat
+```bash
+cd m3-level-13 
+mvn clean tomcat7:run
 ```
 
-Servlet
-```angular2html
-http://localhost:8080/hello
+1. Пример html
+```bash
+curl http://localhost:8080/index.html
 ```
 
-JSP
-```angular2html
-http://localhost:8080/simple.jsp?name=Иван
+2. Пример Servlet
+```bash
+curl http://localhost:8080/hello
+```
+
+3. Пример JSP
+```bash
+curl "http://localhost:8080/simple.jsp?name=Jon"
 ```
 
