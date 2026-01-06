@@ -68,6 +68,21 @@ public class Main {
             }
         }
 
+        // 8. ДЕМОНСТРАЦИЯ getSingleResult()
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            // Пример 1: Успешный поиск по уникальному значению
+            System.out.println("\nПример 1: Поиск пользователя по уникальному email");
+            Query<User> query1 = session.createQuery(
+                    "from User where email = :email", User.class);
+            query1.setParameter("email", "alice@example.com");
+
+            User user1 = query1.getSingleResult();
+            System.out.println("  Найден пользователь: " + user1.getName());
+            System.out.println("  Email: " + user1.getEmail());
+            System.out.println("  Уровень: " + user1.getLevel());
+        }
+
         HibernateUtil.shutdown();
     }
 
