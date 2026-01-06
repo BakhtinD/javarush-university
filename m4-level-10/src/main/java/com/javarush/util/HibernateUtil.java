@@ -7,6 +7,8 @@ import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.Environment;
 import org.hibernate.service.ServiceRegistry;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 public class HibernateUtil {
@@ -15,57 +17,28 @@ public class HibernateUtil {
     public static SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
-                // Создаем объект Configuration
                 Configuration configuration = new Configuration();
 
-                // Создаем Properties и настраиваем их
-                Properties settings = new Properties();
+                // Загружаем properties из файла
+                Properties settings = loadPropertiesFromFile();
 
-                // 1. Настройки подключения к БД
-                settings.put(Environment.DRIVER, "com.mysql.cj.jdbc.Driver");
-                settings.put(Environment.URL, "jdbc:mysql://localhost:3306/sakila");
-                settings.put(Environment.USER, "root");
-                settings.put(Environment.PASS, "sakila");
+                // Если файл не найден
+                if (settings.isEmpty()) {
+                    System.out.println("Файл hibernate.properties не найден!");
+                    throw new ExceptionInInitializerError();
+                }
 
-                // 2. Диалект
-                settings.put(Environment.DIALECT, "org.hibernate.dialect.MySQL8Dialect");
-
-                // 3. Настройки пула соединений
-                settings.put(Environment.C3P0_MIN_SIZE, "5");
-                settings.put(Environment.C3P0_MAX_SIZE, "20");
-                settings.put(Environment.C3P0_TIMEOUT, "300");
-                settings.put(Environment.C3P0_MAX_STATEMENTS, "50");
-                settings.put(Environment.C3P0_IDLE_TEST_PERIOD, "3000");
-
-                // 4. Логирование SQL
-                settings.put(Environment.SHOW_SQL, "true");
-                settings.put(Environment.FORMAT_SQL, "true");
-
-                // 5. Автоматическое управление схемой
-                settings.put(Environment.HBM2DDL_AUTO, "create-drop");
-
-                // 6. Производительность
-                settings.put(Environment.USE_SECOND_LEVEL_CACHE, "false");
-                settings.put(Environment.CURRENT_SESSION_CONTEXT_CLASS, "thread");
-
-                // Применяем настройки
                 configuration.setProperties(settings);
-
-                // Регистрируем Entity-классы (Слайд 13, способ 2)
                 configuration.addAnnotatedClass(User.class);
 
-                // Создаем ServiceRegistry
                 ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder()
                         .applySettings(configuration.getProperties())
                         .build();
 
-                // Создаем SessionFactory
                 sessionFactory = configuration.buildSessionFactory(serviceRegistry);
-
-                System.out.println("Hibernate сконфигурирован через Properties!");
+                System.out.println("Hibernate сконфигурирован через файл properties!");
 
             } catch (Exception e) {
-                System.err.println("Ошибка при создании SessionFactory:");
                 e.printStackTrace();
                 throw new ExceptionInInitializerError(e);
             }
@@ -73,10 +46,25 @@ public class HibernateUtil {
         return sessionFactory;
     }
 
+    private static Properties loadPropertiesFromFile() {
+        Properties properties = new Properties();
+        try (InputStream input = HibernateUtil.class
+                .getClassLoader()
+                .getResourceAsStream("hibernate.properties")) {
+
+            if (input != null) {
+                properties.load(input);
+                System.out.println("Загружены настройки из hibernate.properties");
+            }
+        } catch (IOException e) {
+            System.err.println("Ошибка при чтении hibernate.properties: " + e.getMessage());
+        }
+        return properties;
+    }
+
     public static void shutdown() {
         if (sessionFactory != null) {
             sessionFactory.close();
-            System.out.println("SessionFactory закрыт.");
         }
     }
 }
