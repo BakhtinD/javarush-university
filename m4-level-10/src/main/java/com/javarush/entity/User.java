@@ -26,7 +26,6 @@ public class User {
     @Column(name = "level")
     private Integer level;
 
-    // Конструктор для удобства (без id, т.к. он генерируется автоматически)
     public User(String name, String email, Integer level) {
         this.name = name;
         this.email = email;
