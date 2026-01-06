@@ -56,6 +56,18 @@ public class Main {
             }
         }
 
+        // 7. Демонстрация HQL С SELECT
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Запрос возвращает список String, а не User
+            Query<String> query = session.createQuery("select name from User", String.class);
+            List<String> names = query.getResultList();
+
+            System.out.println("Все имена пользователей (" + names.size() + "):");
+            for (String name : names) {
+                System.out.println("  -> " + name);
+            }
+        }
+
         HibernateUtil.shutdown();
     }
 
