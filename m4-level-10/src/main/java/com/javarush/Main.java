@@ -42,14 +42,13 @@ public class Main {
     private static void saveUser(User user) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
-            session.persist(user); // JPA-стандарт (Слайд 16)
+            session.persist(user);
             transaction.commit();
         }
     }
 
     private static User getUserById(Integer id) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            // Метод get() (Слайд 15)
             return session.get(User.class, id);
         }
     }
@@ -57,7 +56,7 @@ public class Main {
     private static void updateUser(User user) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
-            session.update(user); // Можно использовать merge() для JPA
+            session.update(user);
             transaction.commit();
         }
     }
@@ -65,7 +64,7 @@ public class Main {
     private static void deleteUser(User user) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
-            session.remove(user); // JPA-стандарт (Слайд 17)
+            session.remove(user);
             transaction.commit();
         }
     }

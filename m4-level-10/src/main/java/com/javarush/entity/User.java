@@ -6,11 +6,11 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "users")
-@Getter // автоматически генерирует геттеры для всех полей
-@Setter // автоматически генерирует сеттеры для всех полей
-@NoArgsConstructor // генерирует конструктор без параметров (обязательно для JPA)
-@AllArgsConstructor // генерирует конструктор со всеми параметрами (опционально)
-@ToString // генерирует toString()
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
 public class User {
 
     @Id
