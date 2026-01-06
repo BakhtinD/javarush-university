@@ -19,6 +19,7 @@
         <h2.version>2.2.224</h2.version>
         <lombok.version>1.18.30</lombok.version>
         <mysql.version>8.0.33</mysql.version>
+        <hikaricp.version>5.0.1</hikaricp.version>
     </properties>
 
     <dependencies>
@@ -27,6 +28,13 @@
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
             <version>${hibernate.version}</version>
+        </dependency>
+
+        <!-- HikariCP Connection Pool -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${hikaricp.version}</version>
         </dependency>
 
         <!-- MySQL Driver -->

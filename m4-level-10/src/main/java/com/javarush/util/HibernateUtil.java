@@ -61,9 +61,21 @@ public class HibernateUtil {
         return properties;
     }
 
+    public static void testConnectionPool() {
+        System.out.println("\nТестирование пула соединений HikariCP:");
+        try (var session = getSessionFactory().openSession()) {
+            var result = session.createNativeQuery("SELECT CONCAT('HikariCP активен: ', NOW())")
+                    .getSingleResult();
+            System.out.println(" " + result);
+        } catch (Exception e) {
+            System.err.println(" Ошибка подключения: " + e.getMessage());
+        }
+    }
+
     public static void shutdown() {
         if (sessionFactory != null) {
             sessionFactory.close();
         }
     }
+
 }
