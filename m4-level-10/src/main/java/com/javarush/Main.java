@@ -274,6 +274,29 @@ public class Main {
             System.out.println("Найдено: " + count);
         }
 
+        // 18. Защита от SQL-инъекций
+        System.out.println("\n18. Защита от SQL-инъекций");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Подготовка
+            session.beginTransaction();
+            session.persist(new User("Ivan", "ivan@test.com", 1));
+            session.getTransaction().commit();
+
+            // Пример опасного ввода
+            String dangerousInput = "Ivan'; DROP TABLE users; --";
+
+            System.out.println("\nОпасный ввод: \"" + dangerousInput + "\"");
+            System.out.println("\nС параметром - безопасно:");
+
+            // Безопасно с параметром
+            List<User> users = session.createQuery("from User where name = :name", User.class)
+                    .setParameter("name", dangerousInput)
+                    .getResultList();
+
+            System.out.println("Найдено пользователей: " + users.size());
+            System.out.println("Таблица users не удалена - параметры защитили!");
+        }
+
         HibernateUtil.shutdown();
     }
 
