@@ -217,6 +217,28 @@ public class Main {
             System.out.println("Сотрудники с просроченными задачами: " + emps.size());
         }
 
+        // 15. JOIN в HQL - обновление задач
+        System.out.println("\n15. JOIN в HQL - обновление");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            // 1. Подготовка
+            Employee director = new Employee("Director", "CEO", 0);
+            session.beginTransaction();
+            session.persist(director);
+            session.persist(new EmployeeTask("Task", null, new Date(), "New"));
+            session.getTransaction().commit();
+
+            // 2. UPDATE (запрос из слайда)
+            session.beginTransaction();
+            int count = session.createQuery(
+                            "update EmployeeTask set employee = :d where employee is null")
+                    .setParameter("d", director)
+                    .executeUpdate();
+            session.getTransaction().commit();
+
+            System.out.println("Задач назначено на директора: " + count);
+        }
+
         HibernateUtil.shutdown();
     }
 
