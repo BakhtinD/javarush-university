@@ -199,6 +199,24 @@ public class Main {
             System.out.println("\nHibernate сам добавил JOIN в SQL!");
         }
 
+        // 14. JOIN в HQL - просроченные задачи
+        System.out.println("\n14. JOIN в HQL - просроченные задачи");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Подготовка
+            Employee emp = new Employee("John", "Dev", 50000);
+            session.beginTransaction();
+            session.persist(emp);
+            session.persist(new EmployeeTask("Task", emp, new Date(), "Overdue"));
+            session.getTransaction().commit();
+
+            // Запрос из слайда
+            List<Employee> emps = session.createQuery(
+                    "select distinct employee from EmployeeTask where deadline < CURRENT_DATE",
+                    Employee.class).getResultList();
+
+            System.out.println("Сотрудники с просроченными задачами: " + emps.size());
+        }
+
         HibernateUtil.shutdown();
     }
 
