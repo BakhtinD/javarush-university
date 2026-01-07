@@ -258,6 +258,22 @@ public class Main {
             System.out.println("Найдено: " + tasks.size());
         }
 
+        // 17. Параметр-список
+        System.out.println("\n17. setParameterList");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // 1 строка подготовки
+            session.beginTransaction();
+            session.persist(new Employee("Dev", "Developer", 0));
+            session.getTransaction().commit();
+
+            // 1 строка запроса
+            int count = session.createQuery("from Employee where position in (:list)", Employee.class)
+                    .setParameterList("list", new String[]{"Developer", "Tester"})
+                    .getResultList().size();
+
+            System.out.println("Найдено: " + count);
+        }
+
         HibernateUtil.shutdown();
     }
 
