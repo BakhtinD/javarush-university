@@ -239,6 +239,25 @@ public class Main {
             System.out.println("Задач назначено на директора: " + count);
         }
 
+        // 16. Параметры в HQL
+        System.out.println("\n16. Параметры в HQL");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Подготовка
+            Employee emp = new Employee("Ivan", "Dev", 0);
+            session.beginTransaction();
+            session.persist(emp);
+            session.persist(new EmployeeTask("Task", emp, new Date(), "New"));
+            session.getTransaction().commit();
+
+            // Параметр из слайда
+            List<EmployeeTask> tasks = session.createQuery(
+                            "from EmployeeTask where employee.name = :username", EmployeeTask.class)
+                    .setParameter("username", "Ivan")
+                    .getResultList();
+
+            System.out.println("Найдено: " + tasks.size());
+        }
+
         HibernateUtil.shutdown();
     }
 
