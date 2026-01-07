@@ -1,5 +1,7 @@
 package com.javarush.util;
 
+import com.javarush.entity.Employee;
+import com.javarush.entity.EmployeeTask;
 import com.javarush.entity.User;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
@@ -29,6 +31,8 @@ public class HibernateUtil {
 
                 configuration.setProperties(settings);
                 configuration.addAnnotatedClass(User.class);
+                configuration.addAnnotatedClass(Employee.class);
+                configuration.addAnnotatedClass(EmployeeTask.class);
 
                 ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder()
                         .applySettings(configuration.getProperties())

@@ -1,5 +1,7 @@
 package com.javarush;
 
+import com.javarush.entity.Employee;
+import com.javarush.entity.EmployeeTask;
 import com.javarush.entity.User;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.ScrollMode;
@@ -9,6 +11,7 @@ import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -150,6 +153,27 @@ public class Main {
             System.out.println("\nАналог с getResultList():");
             List<User> users = query.getResultList();
             users.forEach(user -> System.out.println("  -> " + user.getName()));
+        }
+
+        // 12. JOIN в HQL
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Быстрая подготовка данных
+            Employee emp = new Employee("Ivan", "Dev", 100000);
+            EmployeeTask task = new EmployeeTask("Test", emp, new Date(), "New");
+
+            session.beginTransaction();
+            session.persist(emp);
+            session.persist(task);
+            session.getTransaction().commit();
+
+            // Простой JOIN
+            System.out.println("\nПример JOIN:");
+            Query<EmployeeTask> query = session.createQuery(
+                    "from EmployeeTask t join fetch t.employee", EmployeeTask.class);
+
+            query.getResultList().forEach(t ->
+                    System.out.println(t.getName() + " -> " + t.getEmployee().getName())
+            );
         }
 
         HibernateUtil.shutdown();
