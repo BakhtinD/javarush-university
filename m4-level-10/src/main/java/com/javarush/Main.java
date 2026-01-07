@@ -2,6 +2,7 @@ package com.javarush;
 
 import com.javarush.entity.Employee;
 import com.javarush.entity.EmployeeTask;
+import com.javarush.entity.Product;
 import com.javarush.entity.User;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.ScrollMode;
@@ -296,6 +297,74 @@ public class Main {
             System.out.println("Найдено пользователей: " + users.size());
             System.out.println("Таблица users не удалена - параметры защитили!");
         }
+
+        // 19. Пагинация
+        System.out.println("\n19. Пагинация");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Быстрая подготовка
+            session.beginTransaction();
+            session.persist(new User("A", "a@test.com", 1));
+            session.persist(new User("B", "b@test.com", 2));
+            session.getTransaction().commit();
+
+            // Пагинация
+            List<User> users = session.createQuery("from User", User.class)
+                    .setFirstResult(1)
+                    .setMaxResults(1)
+                    .getResultList();
+
+            System.out.println("Вторая запись: " + users.get(0).getName());
+        }
+
+        // 20. Сортировка
+        System.out.println("\n20. Сортировка");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Очистить и создать заново
+            session.beginTransaction();
+            session.createQuery("delete from User").executeUpdate();
+            session.persist(new User("Zebra", "z@test.com", 3));
+            session.persist(new User("Apple", "a@test.com", 1));
+            session.persist(new User("Banana", "b@test.com", 2));
+            session.getTransaction().commit();
+
+            // Сортировка
+            System.out.println("\nОтсортировано по имени:");
+            session.createQuery("from User order by name", User.class)
+                    .getResultList().forEach(u -> System.out.println("  " + u.getName()));
+        }
+
+        // 21. Агрегатные функции
+        System.out.println("\n21. Агрегатные функции");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Просто добавляем еще сотрудников без удаления старых
+            session.beginTransaction();
+            session.persist(new Employee("NewEmp1", "Dev", 500));
+            session.persist(new Employee("NewEmp2", "Manager", 700));
+            session.getTransaction().commit();
+
+            System.out.println("Всего сотрудников: " +
+                    session.createQuery("select count(*) from Employee", Long.class).getSingleResult());
+
+            System.out.println("Средняя зарплата: $" +
+                    session.createQuery("select avg(salary) from Employee", Double.class).getSingleResult());
+        }
+
+        // 22. NamedQueries
+        System.out.println("\n22. NamedQueries");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            // Просто добавляем продукт
+            session.beginTransaction();
+            session.persist(new Product("Demo", "Demo", 1.0, 1));
+            session.getTransaction().commit();
+
+            // NamedQuery
+            int count = session.createNamedQuery("Product.findAll", Product.class)
+                    .getResultList().size();
+
+            System.out.println("NamedQuery вернул: " + count + " продукт");
+        }
+
 
         HibernateUtil.shutdown();
     }
