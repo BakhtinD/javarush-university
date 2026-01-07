@@ -176,6 +176,29 @@ public class Main {
             );
         }
 
+        // 13. JOIN в HQL
+        System.out.println("\n13. JOIN в HQL");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            // Подготовка
+            Employee emp = new Employee("Ivan", "Manager", 100000);
+            session.beginTransaction();
+            session.persist(emp);
+            session.persist(new EmployeeTask("Task", emp, new Date(), "New"));
+            session.getTransaction().commit();
+
+            // Демонстрация из слайда
+            System.out.println("\nИз слайда:");
+            System.out.println("HQL:  from EmployeeTask where employee.name = \"Ivan\"");
+
+            int count = session.createQuery(
+                            "from EmployeeTask where employee.name = 'Ivan'", EmployeeTask.class)
+                    .getResultList().size();
+
+            System.out.println("Результат: " + count + " задача");
+            System.out.println("\nHibernate сам добавил JOIN в SQL!");
+        }
+
         HibernateUtil.shutdown();
     }
 
