@@ -2,12 +2,15 @@ package com.javarush;
 
 import com.javarush.entity.User;
 import com.javarush.util.HibernateUtil;
+import org.hibernate.ScrollMode;
+import org.hibernate.ScrollableResults;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Main {
 
@@ -81,6 +84,72 @@ public class Main {
             System.out.println("  Найден пользователь: " + user1.getName());
             System.out.println("  Email: " + user1.getEmail());
             System.out.println("  Уровень: " + user1.getLevel());
+        }
+
+
+        // 9. Демонстрация stream() и getResultStream()
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<User> query = session.createQuery("from User", User.class);
+
+            // a) Использование stream()
+            query.stream()
+                    .limit(3) // Берем только первых 3 пользователя
+                    .forEach(user -> System.out.println("   -> " + user.getName() + " (уровень: " + user.getLevel() + ")"));
+
+            // b) Использование getResultStream() (JPA стандарт)
+            query.getResultStream()
+                    .filter(user -> user.getLevel() > 10)
+                    .forEach(user -> System.out.println("   -> " + user.getName() + " (уровень > 10)"));
+
+            // c) Преобразование Stream в List:
+            List<String> names = query.getResultStream()
+                    .map(User::getName)
+                    .sorted()
+                    .collect(Collectors.toList());
+            System.out.println("   Отсортированные имена: " + String.join(", ", names));
+        }
+
+        // 10. Демонстрация executeUpdate()
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            Transaction transaction = session.beginTransaction();
+
+            // a) Обновление всех пользователей (увеличиваем уровень на 1)
+            Query updateQuery = session.createQuery("update User set level = level + 1");
+            int updatedCount = updateQuery.executeUpdate();
+            System.out.println("   Обновлено записей: " + updatedCount);
+
+            // b) Удаление пользователей с уровнем < 10
+            Query deleteQuery = session.createQuery("delete from User where level < 10");
+            int deletedCount = deleteQuery.executeUpdate();
+            System.out.println("   Удалено записей: " + deletedCount);
+
+            // c) Проверка результатов
+            Query<User> selectQuery = session.createQuery("from User", User.class);
+            List<User> remainingUsers = selectQuery.getResultList();
+            System.out.println("   Осталось пользователей: " + remainingUsers.size());
+            remainingUsers.forEach(user ->
+                    System.out.println("   -> " + user.getName() + " (уровень: " + user.getLevel() + ")"));
+
+            transaction.commit();
+
+        }
+
+        // 11. Демонстрация scroll()
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<User> query = session.createQuery("from User", User.class);
+
+            System.out.println("Пример scroll():");
+            try (ScrollableResults scroll = query.scroll(ScrollMode.FORWARD_ONLY)) {
+                while (scroll.next()) {
+                    User user = (User) scroll.get(0); // Приведение типа
+                    System.out.println("  -> " + user.getName());
+                }
+            }
+
+            System.out.println("\nАналог с getResultList():");
+            List<User> users = query.getResultList();
+            users.forEach(user -> System.out.println("  -> " + user.getName()));
         }
 
         HibernateUtil.shutdown();
