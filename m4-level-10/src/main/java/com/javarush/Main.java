@@ -365,6 +365,20 @@ public class Main {
             System.out.println("NamedQuery вернул: " + count + " продукт");
         }
 
+        // 23. NativeQuery
+        System.out.println("\n23. NativeQuery");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            System.out.println("\nNativeQuery - чистый SQL:");
+            System.out.println("session.createNativeQuery(\"SELECT * FROM users\", User.class)");
+
+            // Простой пример
+            List<User> users = session.createNativeQuery("SELECT * FROM users", User.class)
+                    .getResultList();
+
+            System.out.println("Результат: " + users.size() + " строк из БД");
+        }
+
 
         HibernateUtil.shutdown();
     }
