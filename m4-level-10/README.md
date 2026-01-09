@@ -1,5 +1,7 @@
 # Модуль 4. Уровень 10. HQL, Запросы к базе данных
 
+Конфигурация через Properties-файл (hibernate.properties) Hibernate
+
 ### Установка базы данных Sakila
 
 ```bash

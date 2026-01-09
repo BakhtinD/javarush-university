@@ -1,5 +1,7 @@
 # Модуль 4. Уровень 9. ORM аннотации, Entity, Hibernate
 
+Конфигурация через XML-файл (hibernate.cfg.xml) Hibernate
+
 ### Установка базы данных Sakila
 
 ```bash
