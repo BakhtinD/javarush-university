@@ -49,6 +49,8 @@ public class Main {
 
         demonstrateDeletionMethods(); // слайд 19
 
+        demonstrateRemoveMethod(); // слайд 20
+
         // shutdown
         HibernateUtil.shutdown();
     }
@@ -1941,6 +1943,84 @@ public class Main {
                     .getSingleResult();
             System.out.println("\nОсталось пользователей в БД: " + count);
         }
+
+        System.out.println("\n=== Демонстрация завершена ===");
+    }
+
+    private static void demonstrateRemoveMethod() {
+        System.out.println("\n=== Демонстрация метода remove() ===");
+
+        // Создадим пользователя для удаления
+        Integer userId = null;
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+            User user = new User("Robert", "robert@example.com", 100);
+            session.persist(user);
+            tx.commit();
+            userId = user.getId();
+            System.out.println("Создан пользователь ID: " + userId);
+        }
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // 1. Получаем объект (должен быть Persistent)
+            User user = session.find(User.class, userId);
+            System.out.println("\n1. Получен пользователь: " + user.getName());
+            System.out.println("   Состояние: PERSISTENT");
+
+            // 2. Удаляем методом remove()
+            System.out.println("\n2. Вызываем remove():");
+            session.remove(user);
+            System.out.println("   Состояние: REMOVED");
+            System.out.println("   💡 DELETE в БД ещё НЕ выполнен");
+            System.out.println("   Объект ещё существует в памяти Java");
+
+            // 3. Проверим состояние объекта
+            System.out.println("\n3. Проверка объекта после remove():");
+            System.out.println("   ID: " + user.getId()); // Ещё доступен
+            System.out.println("   Имя: " + user.getName()); // Ещё доступно
+            System.out.println("   💡 Java-объект не удаляется сразу");
+
+            // 4. flush() выполняет DELETE
+            System.out.println("\n4. Вызываем flush():");
+            session.flush();
+            System.out.println("   💡 DELETE выполнен в БД");
+
+            // 5. Коммит транзакции
+            tx.commit();
+            System.out.println("   ✅ Транзакция завершена");
+
+            // 6. Попытка повторного удаления
+            System.out.println("\n5. Попытка повторного remove():");
+            try {
+                session.remove(user); // Объект уже удалён!
+                System.out.println("   ❌ Не должно сработать");
+            } catch (Exception e) {
+                System.out.println("   💥 Ошибка: " + e.getClass().getSimpleName());
+            }
+        }
+
+        // Проверка, что пользователь удалён
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            User deletedUser = session.find(User.class, userId);
+            System.out.println("\n6. Проверка в БД:");
+            System.out.println("   Пользователь найден? " + (deletedUser != null));
+            System.out.println("   💡 В БД записи больше нет");
+        }
+
+        // Демонстрация ошибок
+        System.out.println("\n--- Распространённые ошибки ---");
+
+        System.out.println("\n1. remove() на Transient объекте:");
+        System.out.println("   User user = new User(...);");
+        System.out.println("   session.remove(user); // 💥 IllegalArgumentException");
+
+        System.out.println("\n2. remove() на Detached объекте:");
+        System.out.println("   User user = session.get(User.class, id);");
+        System.out.println("   session.close(); // объект detached");
+        System.out.println("   newSession.remove(user); // 💥 нужно сначала merge()");
 
         System.out.println("\n=== Демонстрация завершена ===");
     }
