@@ -30,6 +30,8 @@ public class Main {
 
         demonstrateUpdateMethod(); // слайд 12
 
+        demonstrateSaveOrUpdateMethod(); // слайд 13
+
         // shutdown
         HibernateUtil.shutdown();
     }
@@ -256,7 +258,7 @@ public class Main {
             System.out.println("3. Пытаемся получить имя сотрудника...");
             System.out.println("   Имя: " + detachedEmployee.getName()); // 💥 Может быть исключение!
         } catch (Exception e) {
-            System.out.println("4. 💥 Исключение: " + e.getClass().getSimpleName());
+            System.out.println("4.  Исключение: " + e.getClass().getSimpleName());
             System.out.println("   " + e.getMessage());
             System.out.println("   Это LazyInitializationException - частая ошибка!");
         }
@@ -311,7 +313,7 @@ public class Main {
             session.persist(user);
             System.out.println("   После persist - ID: " + user.getId());
             System.out.println("   Состояние: Transient → Persistent");
-            System.out.println("   💡 SQL INSERT ещё НЕ выполнен!");
+            System.out.println("    SQL INSERT ещё НЕ выполнен!");
 
             System.out.println("\n3. Меняем объект ДО коммита:");
             user.setName("Ethan Hunt");
@@ -329,7 +331,7 @@ public class Main {
             System.out.println("   Сейчас Hibernate выполнит:");
             System.out.println("   - INSERT для первого пользователя");
             System.out.println("   - INSERT для второго пользователя");
-            System.out.println("   💡 Возможен batch-режим (одним запросом)");
+            System.out.println("    Возможен batch-режим (одним запросом)");
 
             transaction.commit();
 
@@ -396,7 +398,7 @@ public class Main {
                 Serializable manualId = session.save(userWithId);
                 System.out.println("   save() с ручным ID вернул: " + manualId);
             } catch (Exception e) {
-                System.out.println("   💥 Исключение: " + e.getMessage());
+                System.out.println("    Исключение: " + e.getMessage());
             }
 
             System.out.println("\n6. Отложенное выполнение:");
@@ -545,7 +547,7 @@ public class Main {
             try {
                 User merged = (User) session.merge(userWithFakeId);
                 System.out.println("merge() выполнен, ID результата: " + merged.getId());
-                System.out.println("💡 Hibernate создал НОВУЮ запись с новым ID!");
+                System.out.println(" Hibernate создал НОВУЮ запись с новым ID!");
                 System.out.println("Старый ID (99999) проигнорирован");
             } catch (Exception e) {
                 System.out.println("Исключение: " + e.getMessage());
@@ -602,7 +604,7 @@ public class Main {
             System.out.println("\nВызываем update() для detached объекта:");
             session.update(detachedUser);
             System.out.println("detachedUser теперь PERSISTENT (управляется сессией)");
-            System.out.println("💡 Обратите внимание: сам объект изменил состояние!");
+            System.out.println("Обратите внимание: сам объект изменил состояние!");
 
             // Демонстрация: изменения после update() тоже сохранятся
             detachedUser.setLevel(25);
@@ -623,10 +625,10 @@ public class Main {
             System.out.println("Transient объект, ID: " + transientUser.getId());
 
             try {
-                session.update(transientUser); // ❌ Ошибка!
+                session.update(transientUser); // Ошибка!
                 System.out.println("update() выполнен"); // Не дойдём сюда
             } catch (Exception e) {
-                System.out.println("💥 Исключение: " + e.getClass().getSimpleName());
+                System.out.println("Исключение: " + e.getClass().getSimpleName());
                 System.out.println("Сообщение: " + e.getMessage());
                 System.out.println("update() не работает с Transient объектами!");
             }
@@ -689,23 +691,235 @@ public class Main {
             System.out.println("\nПробуем update():");
             try {
                 detachedForUpdate.setName("Update Name");
-                session.update(detachedForUpdate); // 💥 Проблема!
+                session.update(detachedForUpdate); //  Проблема!
                 System.out.println("update() выполнен");
             } catch (Exception e) {
-                System.out.println("💥 Исключение: " + e.getClass().getSimpleName());
+                System.out.println(" Исключение: " + e.getClass().getSimpleName());
                 System.out.println("Нельзя иметь два persistent объекта с одним ID в сессии!");
             }
 
             // Пробуем merge() - работает
             System.out.println("\nПробуем merge():");
             detachedForMerge.setName("Merge Name");
-            User merged = (User) session.merge(detachedForMerge); // ✅ Работает
+            User merged = (User) session.merge(detachedForMerge); //  Работает
             System.out.println("merge() выполнен успешно");
             System.out.println("merge() вернул новый объект: " + (merged != detachedForMerge));
             System.out.println("Оригинальный detached объект остался detached");
 
             transaction.commit();
         }
+
+        System.out.println("\n=== Демонстрация завершена ===");
+    }
+
+    private static void demonstrateSaveOrUpdateMethod() {
+        System.out.println("\n=== Демонстрация метода saveOrUpdate() ===");
+
+        // Будем использовать отдельные ID, которые точно существуют в текущей сессии
+        Integer testId1 = null;
+        Integer testId2 = null;
+
+        // Создадим двух тестовых пользователей в отдельной транзакции
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            User user1 = new User("Thomas", "thomas@example.com", 17);
+            User user2 = new User("Victor", "victor@example.com", 18);
+
+            session.persist(user1);
+            session.persist(user2);
+
+            transaction.commit();
+
+            testId1 = user1.getId();
+            testId2 = user2.getId();
+
+            System.out.println("Созданы тестовые пользователи:");
+            System.out.println("  User1 - ID: " + testId1 + ", Имя: Thomas");
+            System.out.println("  User2 - ID: " + testId2 + ", Имя: Victor");
+        }
+
+        // Часть 1: Простое использование saveOrUpdate() - INSERT
+        System.out.println("\n--- Часть 1: INSERT с новым объектом ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            User newUser = new User("Walter", "walter@example.com", 20);
+            System.out.println("Новый объект до saveOrUpdate:");
+            System.out.println("  ID: " + newUser.getId() + " (null = Transient)");
+            System.out.println("  Имя: " + newUser.getName());
+
+            session.saveOrUpdate(newUser); // INSERT
+
+            System.out.println("\nПосле saveOrUpdate:");
+            System.out.println("  ID: " + newUser.getId() + " (установлен Hibernate)");
+            System.out.println("  Состояние: Transient → Persistent");
+            System.out.println("   Объект был изменён (ID установлен)");
+
+            transaction.commit();
+            System.out.println("INSERT выполнен при коммите");
+        }
+
+        // Часть 2: UPDATE существующего объекта
+        System.out.println("\n--- Часть 2: UPDATE существующего объекта ---");
+
+        // Создадим detached объект на основе существующего
+        User detachedUser = null;
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Загружаем существующий объект
+            detachedUser = session.get(User.class, testId1);
+            System.out.println("Загружен объект из БД:");
+            System.out.println("  ID: " + detachedUser.getId());
+            System.out.println("  Имя: " + detachedUser.getName());
+            System.out.println("  Email: " + detachedUser.getEmail());
+
+            // Сессия закрывается - объект становится detached
+        }
+
+        // Меняем detached объект
+        System.out.println("\nИзменяем detached объект:");
+        String oldName = detachedUser.getName();
+        detachedUser.setName("Thomas Anderson");
+        detachedUser.setEmail("thomas.anderson@example.com");
+        System.out.println("  Имя: " + oldName + " → " + detachedUser.getName());
+        System.out.println("  Email: обновлён");
+
+        // Используем saveOrUpdate() для сохранения изменений
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            System.out.println("\nВызываем saveOrUpdate() на detached объекте:");
+            session.saveOrUpdate(detachedUser);
+
+            System.out.println("  Состояние: Detached → Persistent");
+            System.out.println("   Оригинальный объект теперь управляется сессией");
+
+            // Демонстрация: изменения после saveOrUpdate() тоже сохранятся
+            detachedUser.setLevel(99);
+            System.out.println("  Меняем уровень после saveOrUpdate(): " + detachedUser.getLevel());
+
+            transaction.commit();
+            System.out.println("UPDATE выполнен при коммите");
+        }
+
+        // Часть 3: Сравнение с merge() - безопасность
+        System.out.println("\n--- Часть 3: Сравнение saveOrUpdate() и merge() ---");
+
+        // Подготовим два одинаковых detached объекта
+        User userForSaveOrUpdate = new User("Compare1", "compare1@example.com", 30);
+        userForSaveOrUpdate.setId(testId2); // Используем существующий ID
+
+        User userForMerge = new User("Compare2", "compare2@example.com", 31);
+        userForMerge.setId(testId2); // Тот же ID
+
+        System.out.println("\nДва объекта с одинаковым ID=" + testId2 + ":");
+        System.out.println("  Object1 (для saveOrUpdate): " + userForSaveOrUpdate.getName());
+        System.out.println("  Object2 (для merge): " + userForMerge.getName());
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Сначала загрузим оригинал в сессию
+            User originalInSession = session.get(User.class, testId2);
+            System.out.println("\nВ сессии уже есть объект с ID=" + testId2);
+            System.out.println("  Имя в сессии: " + originalInSession.getName());
+
+            System.out.println("\n1. Пробуем saveOrUpdate() на Object1:");
+            try {
+                session.saveOrUpdate(userForSaveOrUpdate);
+                System.out.println("   Должно быть исключение!");
+                System.out.println("  В сессии не может быть двух объектов с одним ID");
+            } catch (Exception e) {
+                System.out.println("   Ожидаемое исключение: " + e.getClass().getSimpleName());
+                System.out.println("  Сообщение: " + e.getMessage());
+            }
+
+            System.out.println("\n2. Пробуем merge() на Object2:");
+            User mergedUser = (User) session.merge(userForMerge);
+            System.out.println("   merge() выполнен успешно");
+            System.out.println("  Оригинал ID: " + userForMerge.getId());
+            System.out.println("  Результат ID: " + mergedUser.getId());
+            System.out.println("  Это разные объекты: " + (userForMerge != mergedUser));
+            System.out.println("   merge() не изменяет оригинал и безопасно работает");
+
+            System.out.println("\n3. Проверяем, что в сессии:");
+            System.out.println("  Оригинал в сессии: " + originalInSession.getName());
+            System.out.println("  Результат merge: " + mergedUser.getName());
+            System.out.println("  originalInSession == mergedUser: " + (originalInSession == mergedUser));
+
+            transaction.commit();
+        }
+
+        // Часть 4: Демонстрация проблемы с несуществующими ID
+        System.out.println("\n--- Часть 4: Проблема saveOrUpdate() с несуществующими ID ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            System.out.println("\nОбъект с ID=999999 (не существует в БД):");
+            User problematicUser = new User("Problem", "problem@example.com", 40);
+            problematicUser.setId(999999);
+
+            System.out.println("  Перед saveOrUpdate ID: " + problematicUser.getId());
+
+            try {
+                session.saveOrUpdate(problematicUser);
+                System.out.println("  saveOrUpdate() выполнен");
+
+                // Hibernate может:
+                // 1. Выполнить UPDATE (и провалиться с OptimisticLockException)
+                // 2. Выполнить INSERT с ID=999999 (если БД позволяет)
+                // 3. Изменить ID и выполнить INSERT
+
+                System.out.println("  После saveOrUpdate ID: " + problematicUser.getId());
+
+                transaction.commit();
+                System.out.println("  ✅ Транзакция закоммичена");
+
+                // Проверим, что в БД
+                try (Session checkSession = HibernateUtil.getSessionFactory().openSession()) {
+                    User fromDb = checkSession.get(User.class, problematicUser.getId());
+                    if (fromDb != null) {
+                        System.out.println("  В БД найдена запись с ID=" + fromDb.getId());
+                    } else {
+                        System.out.println("  ❌ Запись не найдена в БД");
+                    }
+                }
+
+            } catch (Exception e) {
+                System.out.println("  💥 Исключение при saveOrUpdate: " + e.getClass().getSimpleName());
+                System.out.println("  Сообщение: " + e.getMessage());
+                System.out.println("  💡 saveOrUpdate() попытался выполнить UPDATE, но записи нет!");
+                transaction.rollback();
+            }
+        }
+
+        // Часть 5: Выводы и рекомендации
+        System.out.println("\n--- Часть 5: Выводы и рекомендации ---");
+
+        System.out.println("\n📌 saveOrUpdate() - особенности:");
+        System.out.println("  • Может изменять переданный объект (устанавливать ID)");
+        System.out.println("  • Определяет INSERT/UPDATE по наличию ID");
+        System.out.println("  • Может вызывать исключения при несуществующих ID");
+        System.out.println("  • Часть legacy Hibernate API (не JPA стандарт)");
+
+        System.out.println("\n📌 Когда использовать saveOrUpdate():");
+        System.out.println("  • В legacy-коде для совместимости");
+        System.out.println("  • Для простых CRUD операций");
+        System.out.println("  • Когда точно контролируете состояние объектов");
+
+        System.out.println("\n📌 Современная альтернатива:");
+        System.out.println("  if (object.getId() == null) {");
+        System.out.println("      session.persist(object);  // Для новых");
+        System.out.println("  } else {");
+        System.out.println("      session.merge(object);    // Для существующих");
+        System.out.println("  }");
+
+        System.out.println("\n📌 Или ещё проще:");
+        System.out.println("  session.merge(object);  // Работает для обоих случаев");
+        System.out.println("  // Но помните: merge() возвращает новый объект!");
 
         System.out.println("\n=== Демонстрация завершена ===");
     }
