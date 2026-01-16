@@ -9,6 +9,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -34,6 +35,8 @@ public class Main {
         demonstrateSaveOrUpdateMethod(); // слайд 13
 
         demonstrateGetLoadFindMethods(); // слайд 14
+
+        demonstrateGetMethod(); // слайд 15
 
         // shutdown
         HibernateUtil.shutdown();
@@ -1094,6 +1097,223 @@ public class Main {
         System.out.println("  // Для Session (Hibernate):");
         System.out.println("  User user = session.get(User.class, id); // или find()");
         System.out.println("  // load() используйте осторожно!");
+
+        System.out.println("\n=== Демонстрация завершена ===");
+    }
+
+    private static void demonstrateGetMethod() {
+        System.out.println("\n=== Демонстрация метода get() ===");
+
+        // Создадим несколько тестовых пользователей
+        List<Integer> testUserIds = new ArrayList<>();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            User user1 = new User("George", "george@example.com", 60);
+            User user2 = new User("Helen", "helen@example.com", 61);
+            User user3 = new User("Ivan", "ivan@example.com", 62);
+
+            session.persist(user1);
+            session.persist(user2);
+            session.persist(user3);
+
+            transaction.commit();
+
+            testUserIds.add(user1.getId());
+            testUserIds.add(user2.getId());
+            testUserIds.add(user3.getId());
+
+            System.out.println("Созданы тестовые пользователи:");
+            System.out.println("  ID: " + user1.getId() + ", Имя: George");
+            System.out.println("  ID: " + user2.getId() + ", Имя: Helen");
+            System.out.println("  ID: " + user3.getId() + ", Имя: Ivan");
+        }
+
+        // Часть 1: Базовое использование get()
+        System.out.println("\n--- Часть 1: Базовое использование get() ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Integer existingId = testUserIds.get(0);
+
+            System.out.println("\n1. Получение существующего объекта:");
+            System.out.println("   session.get(User.class, " + existingId + ")");
+
+            User user = session.get(User.class, existingId);
+
+            System.out.println("   Результат: " + (user != null ? "Объект найден" : "null"));
+            System.out.println("   Имя: " + user.getName());
+            System.out.println("   Email: " + user.getEmail());
+            System.out.println("   💡 SELECT выполнен сразу при вызове get()");
+
+            System.out.println("\n2. Повторное получение того же объекта:");
+            System.out.println("   session.get(User.class, " + existingId + ") второй раз");
+
+            User sameUser = session.get(User.class, existingId);
+
+            System.out.println("   Результат: " + (sameUser != null ? "Объект найден" : "null"));
+            System.out.println("   Это тот же объект? " + (user == sameUser));
+            System.out.println("   💡 Второй get() взял объект из кэша сессии");
+            System.out.println("   💡 Нет повторного SELECT в БД");
+        }
+
+        // Часть 2: Работа с несуществующими объектами
+        System.out.println("\n--- Часть 2: Несуществующие объекты ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Integer nonExistentId = 999999;
+
+            System.out.println("\n1. get() с несуществующим ID=" + nonExistentId + ":");
+            User user = session.get(User.class, nonExistentId);
+
+            System.out.println("   Результат: " + (user == null ? "null" : "объект"));
+            System.out.println("   💡 Безопасно - просто возвращает null");
+            System.out.println("   💡 SELECT выполнен, но вернул 0 строк");
+
+            System.out.println("\n2. Безопасная обработка результата:");
+            System.out.println("   User user = session.get(User.class, id);");
+            System.out.println("   ");
+            System.out.println("   if (user != null) {");
+            System.out.println("       // Объект существует - работаем");
+            System.out.println("       user.setName(\"Updated\");");
+            System.out.println("   } else {");
+            System.out.println("       // Объект не существует");
+            System.out.println("       System.out.println(\"Не найден\");");
+            System.out.println("       // Или создаём нового...");
+            System.out.println("       user = new User(...);");
+            System.out.println("       session.persist(user);");
+            System.out.println("   }");
+        }
+
+        // Часть 3: Разные типы первичных ключей
+        System.out.println("\n--- Часть 3: Разные типы первичных ключей ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            System.out.println("\n1. Product с автоинкрементным ID (Integer):");
+            Product product = new Product("Laptop", "Electronics", 999.99, 10);
+            session.persist(product);
+
+            System.out.println("   Сохранён продукт ID: " + product.getId());
+
+            // Получаем по Integer ID
+            Product loadedProduct = session.get(Product.class, product.getId());
+            System.out.println("   get(Product.class, " + product.getId() + "):");
+            System.out.println("   Название: " + loadedProduct.getName());
+
+            System.out.println("\n2. Демонстрация с String ID (предположим):");
+            System.out.println("   // Если бы Product использовал String ID:");
+            System.out.println("   Product p = new Product();");
+            System.out.println("   p.setId(\"PROD-001\"); // String ID");
+            System.out.println("   session.persist(p);");
+            System.out.println("   ");
+            System.out.println("   // Получение по String:");
+            System.out.println("   Product p2 = session.get(Product.class, \"PROD-001\");");
+
+            transaction.commit();
+        }
+
+        // Часть 4: Использование в транзакциях
+        System.out.println("\n--- Часть 4: Использование в транзакциях ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            System.out.println("\n1. Загрузка и обновление в одной транзакции:");
+
+            Transaction transaction = session.beginTransaction();
+
+            Integer userId = testUserIds.get(1);
+            System.out.println("   Загружаем пользователя ID=" + userId);
+
+            User user = session.get(User.class, userId);
+            if (user != null) {
+                System.out.println("   Текущее имя: " + user.getName());
+                System.out.println("   Текущий уровень: " + user.getLevel());
+
+                // Меняем объект
+                user.setName("Helen Updated");
+                user.setLevel(user.getLevel() + 1);
+
+                System.out.println("   Новое имя: " + user.getName());
+                System.out.println("   Новый уровень: " + user.getLevel());
+                System.out.println("   💡 Объект Persistent - изменения отслеживаются");
+            }
+
+            System.out.println("\n   Коммитим транзакцию...");
+            transaction.commit();
+            System.out.println("   ✅ UPDATE выполнен в БД");
+
+            // Проверим, что сохранилось
+            System.out.println("\n2. Проверка обновления:");
+            User checkUser = session.get(User.class, userId);
+            System.out.println("   Имя в БД: " + checkUser.getName());
+            System.out.println("   Уровень в БД: " + checkUser.getLevel());
+        }
+
+        // Часть 5: Кэширование и производительность
+        System.out.println("\n--- Часть 5: Кэширование ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            System.out.println("\nДемонстрация кэша первого уровня (сессии):");
+
+            Integer userId = testUserIds.get(2);
+
+            System.out.println("1. Первый get() - загрузка из БД:");
+            long start1 = System.currentTimeMillis();
+            User user1 = session.get(User.class, userId);
+            long time1 = System.currentTimeMillis() - start1;
+            System.out.println("   Время: " + time1 + "ms");
+            System.out.println("   💡 SELECT выполнен в БД");
+
+            System.out.println("\n2. Второй get() - из кэша сессии:");
+            long start2 = System.currentTimeMillis();
+            User user2 = session.get(User.class, userId);
+            long time2 = System.currentTimeMillis() - start2;
+            System.out.println("   Время: " + time2 + "ms");
+            System.out.println("   💡 Объект взят из кэша (быстрее)");
+            System.out.println("   Это тот же объект? " + (user1 == user2));
+
+            System.out.println("\n3. Третий get() с другим ID:");
+            long start3 = System.currentTimeMillis();
+            User user3 = session.get(User.class, testUserIds.get(0));
+            long time3 = System.currentTimeMillis() - start3;
+            System.out.println("   Время: " + time3 + "ms");
+            System.out.println("   💡 SELECT выполнен (не было в кэше)");
+        }
+
+        // Часть 6: Рекомендации
+        System.out.println("\n--- Часть 6: Рекомендации по использованию get() ---");
+
+        System.out.println("\n📌 Когда использовать get():");
+        System.out.println("  • Для загрузки объектов по ID");
+        System.out.println("  • Когда нужна проверка существования объекта");
+        System.out.println("  • В большинстве CRUD операций");
+        System.out.println("  • Когда нужны данные сразу");
+
+        System.out.println("\n📌 Преимущества get():");
+        System.out.println("  • Простой и понятный");
+        System.out.println("  • Безопасный (возвращает null если нет)");
+        System.out.println("  • Немедленная загрузка данных");
+        System.out.println("  • Кэширование в рамках сессии");
+
+        System.out.println("\n📌 Что запомнить:");
+        System.out.println("  • Всегда проверяйте результат на null");
+        System.out.println("  • get() выполняет SELECT сразу");
+        System.out.println("  • Объекты кэшируются в сессии");
+        System.out.println("  • Для массовой загрузки используйте HQL, а не цикл с get()");
+
+        System.out.println("\n📌 Пример правильного использования:");
+        System.out.println("  public User getUserById(Integer id) {");
+        System.out.println("      try (Session session = sessionFactory.openSession()) {");
+        System.out.println("          return session.get(User.class, id);");
+        System.out.println("      }");
+        System.out.println("  }");
+        System.out.println("  ");
+        System.out.println("  // Использование:");
+        System.out.println("  User user = getUserById(123);");
+        System.out.println("  if (user != null) {");
+        System.out.println("      // работаем с пользователем");
+        System.out.println("  }");
 
         System.out.println("\n=== Демонстрация завершена ===");
     }
