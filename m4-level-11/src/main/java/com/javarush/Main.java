@@ -45,6 +45,8 @@ public class Main {
 
         demonstrateFindMethod(); // слайд 17
 
+        demonstrateRefreshMethod(); // слайд 18
+
         // shutdown
         HibernateUtil.shutdown();
     }
@@ -1743,6 +1745,79 @@ public class Main {
         System.out.println("  if (user != null) {");
         System.out.println("      // безопасная работа");
         System.out.println("  }");
+
+        System.out.println("\n=== Демонстрация завершена ===");
+    }
+
+    private static void demonstrateRefreshMethod() {
+        System.out.println("\n=== Демонстрация метода refresh() ===");
+
+        // Создадим пользователя
+        Integer userId = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+            User user = new User("Michael", "michael@example.com", 90);
+            session.persist(user);
+            tx.commit();
+            userId = user.getId();
+            System.out.println("Создан пользователь ID: " + userId);
+        }
+
+        // Демонстрация refresh()
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // 1. Загружаем объект
+            User user = session.get(User.class, userId);
+            System.out.println("\n1. Загружен пользователь:");
+            System.out.println("   Имя: " + user.getName());
+            System.out.println("   Уровень: " + user.getLevel());
+
+            // 2. Меняем локально (ещё не в БД)
+            user.setName("Michael Changed");
+            user.setLevel(95);
+            System.out.println("\n2. Локальные изменения:");
+            System.out.println("   Имя: " + user.getName());
+            System.out.println("   Уровень: " + user.getLevel());
+
+            // 3. Refresh - вернёт значения из БД
+            System.out.println("\n3. Вызываем refresh():");
+            session.refresh(user);
+            System.out.println("   После refresh:");
+            System.out.println("   Имя: " + user.getName()); // Вернулось исходное
+            System.out.println("   Уровень: " + user.getLevel()); // Вернулось исходное
+            System.out.println("   💡 Локальные изменения потеряны!");
+
+            tx.commit();
+        }
+
+        // Демонстрация с триггерами/хранимыми процедурами
+        System.out.println("\n--- Практический случай ---");
+        System.out.println("Представьте, что в БД есть триггер,");
+        System.out.println("который при сохранении пользователя:");
+        System.out.println("1. Приводит имя к верхнему регистру");
+        System.out.println("2. Увеличивает уровень на 1");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            User newUser = new User("david", "david@example.com", 50);
+            session.persist(newUser);
+
+            System.out.println("\nСоздан пользователь:");
+            System.out.println("   Имя: " + newUser.getName());
+            System.out.println("   Уровень: " + newUser.getLevel());
+
+            System.out.println("\nТриггер в БД мог изменить данные...");
+            System.out.println("Refresh чтобы получить актуальные данные:");
+
+            session.refresh(newUser);
+            System.out.println("   После refresh (если бы был триггер):");
+            System.out.println("   Имя: " + newUser.getName() + " (может быть 'DAVID')");
+            System.out.println("   Уровень: " + newUser.getLevel() + " (может быть 51)");
+
+            tx.commit();
+        }
 
         System.out.println("\n=== Демонстрация завершена ===");
     }
