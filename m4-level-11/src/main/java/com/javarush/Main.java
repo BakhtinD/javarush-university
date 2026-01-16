@@ -10,6 +10,7 @@ import org.hibernate.Transaction;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 public class Main {
 
@@ -31,6 +32,8 @@ public class Main {
         demonstrateUpdateMethod(); // слайд 12
 
         demonstrateSaveOrUpdateMethod(); // слайд 13
+
+        demonstrateGetLoadFindMethods(); // слайд 14
 
         // shutdown
         HibernateUtil.shutdown();
@@ -920,6 +923,177 @@ public class Main {
         System.out.println("\n📌 Или ещё проще:");
         System.out.println("  session.merge(object);  // Работает для обоих случаев");
         System.out.println("  // Но помните: merge() возвращает новый объект!");
+
+        System.out.println("\n=== Демонстрация завершена ===");
+    }
+
+    private static void demonstrateGetLoadFindMethods() {
+        System.out.println("\n=== Демонстрация get(), load() и find() ===");
+
+        // Создадим тестового пользователя
+        Integer testUserId = null;
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+            User testUser = new User("Edward", "edward@example.com", 50);
+            session.persist(testUser);
+            transaction.commit();
+            testUserId = testUser.getId();
+            System.out.println("Создан тестовый пользователь ID: " + testUserId);
+        }
+
+        // Часть 1: Сравнение get() и load()
+        System.out.println("\n--- Часть 1: Сравнение get() и load() ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            System.out.println("\n1. Метод get() - существующий объект:");
+            User userGet = session.get(User.class, testUserId);
+            System.out.println("   Результат: " + (userGet != null ? "Объект найден" : "null"));
+            System.out.println("   Тип: " + (userGet != null ? userGet.getClass().getSimpleName() : "N/A"));
+            System.out.println("   Данные доступны сразу: " + (userGet != null ? userGet.getName() : "N/A"));
+
+            System.out.println("\n2. Метод load() - существующий объект:");
+            User userLoad = session.load(User.class, testUserId);
+            System.out.println("   Результат: proxy объект (не null)");
+            System.out.println("   Тип: " + userLoad.getClass().getName());
+            System.out.println("   Это proxy? " + userLoad.getClass().getName().contains("$"));
+
+            System.out.println("\n3. Обращение к данным proxy:");
+            System.out.println("   До обращения к getName()...");
+            String name = userLoad.getName(); // Загрузка происходит ЗДЕСЬ
+            System.out.println("   Имя: " + name);
+            System.out.println("   💡 SELECT выполнен только при обращении к getName()!");
+
+            System.out.println("\n4. Сравнение производительности:");
+            System.out.println("   get() → SELECT выполняется сразу");
+            System.out.println("   load() → SELECT выполняется при первом обращении");
+            System.out.println("   load() полезен, если объект может не понадобиться");
+        }
+
+        // Часть 2: Поведение при несуществующих объектах
+        System.out.println("\n--- Часть 2: Несуществующие объекты ---");
+
+        Integer nonExistentId = 99999;
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            System.out.println("\n1. get() с несуществующим ID=" + nonExistentId + ":");
+            User userGet = session.get(User.class, nonExistentId);
+            System.out.println("   Результат: " + (userGet == null ? "null" : "объект"));
+            System.out.println("   ✅ Безопасно - просто возвращает null");
+
+            System.out.println("\n2. load() с несуществующим ID=" + nonExistentId + ":");
+            User userLoad = session.load(User.class, nonExistentId);
+            System.out.println("   Результат: proxy создан (не null)");
+            System.out.println("   Тип: " + userLoad.getClass().getName());
+            System.out.println("   💡 Пока никакого исключения!");
+
+            System.out.println("\n3. Пробуем обратиться к proxy:");
+            try {
+                String name = userLoad.getName(); // Попытка загрузки
+                System.out.println("   Имя: " + name);
+            } catch (Exception e) {
+                System.out.println("   💥 Исключение: " + e.getClass().getSimpleName());
+                System.out.println("   Сообщение: " + e.getMessage());
+                System.out.println("   load() создаёт proxy, но при обращении выбрасывает исключение!");
+            }
+
+            System.out.println("\n4. find() с несуществующим ID=" + nonExistentId + ":");
+            User userFind = session.find(User.class, nonExistentId);
+            System.out.println("   Результат: " + (userFind == null ? "null" : "объект"));
+            System.out.println("   ✅ Поведение как у get() - безопасно возвращает null");
+        }
+
+        // Часть 3: Метод find() - JPA стандарт
+        System.out.println("\n--- Часть 3: Метод find() (JPA стандарт) ---");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            System.out.println("\n1. find() с существующим объектом:");
+            User userFind = session.find(User.class, testUserId);
+            System.out.println("   Результат: " + (userFind != null ? "Объект найден" : "null"));
+            System.out.println("   Тип: " + userFind.getClass().getSimpleName());
+            System.out.println("   Данные доступны сразу: " + userFind.getName());
+
+            System.out.println("\n2. find() с дополнительными параметрами:");
+            System.out.println("   // В реальном коде:");
+            System.out.println("   Map<String, Object> properties = new HashMap<>();");
+            System.out.println("   properties.put(\"javax.persistence.lock.timeout\", 5000);");
+            System.out.println("   User user = session.find(User.class, id, properties);");
+
+            System.out.println("\n3. Сравнение find() и get():");
+            System.out.println("   find() - часть JPA спецификации");
+            System.out.println("   get() - родной метод Hibernate");
+            System.out.println("   В большинстве случаев ведут себя одинаково");
+        }
+
+        // Часть 4: Практический пример с lazy loading
+        System.out.println("\n--- Часть 4: Практический пример с lazy loading ---");
+
+        // Создадим Employee с Task для демонстрации
+        Integer employeeId = null;
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            Employee emp = new Employee("Frank", "Manager", 6000);
+            session.persist(emp);
+
+            EmployeeTask task1 = new EmployeeTask("Report", emp, new Date(), "Pending");
+            EmployeeTask task2 = new EmployeeTask("Meeting", emp, new Date(), "Done");
+            session.persist(task1);
+            session.persist(task2);
+
+            transaction.commit();
+            employeeId = emp.getId();
+            System.out.println("Создан сотрудник с задачами ID: " + employeeId);
+        }
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            System.out.println("\nДемонстрация lazy loading с load():");
+
+            // Важно: tasks в Employee - lazy по умолчанию
+            Employee empProxy = session.load(Employee.class, employeeId);
+            System.out.println("1. load() вернул: " + empProxy.getClass().getName());
+            System.out.println("   Это proxy? " + empProxy.getClass().getName().contains("$"));
+
+            System.out.println("\n2. Обращаемся к имени сотрудника:");
+            System.out.println("   До обращения...");
+            String name = empProxy.getName(); // SELECT для Employee выполняется здесь
+            System.out.println("   Имя: " + name);
+
+            System.out.println("\n3. Обращаемся к задачам (lazy collection):");
+            System.out.println("   До обращения к tasks...");
+            List<EmployeeTask> tasks = empProxy.getTasks(); // SELECT для tasks выполняется здесь
+            System.out.println("   Количество задач: " + tasks.size());
+            System.out.println("   💡 Два SELECT: один для Employee, второй для Tasks");
+        }
+
+        // Часть 5: Рекомендации и выводы
+        System.out.println("\n--- Часть 5: Рекомендации ---");
+
+        System.out.println("\n📌 Когда использовать get()/find():");
+        System.out.println("  • Когда нужно проверить существование объекта");
+        System.out.println("  • Для обязательных ссылок (не null)");
+        System.out.println("  • В большинстве CRUD операций");
+        System.out.println("  • Когда нужны данные сразу");
+
+        System.out.println("\n📌 Когда использовать load():");
+        System.out.println("  • Когда уверены, что объект существует");
+        System.out.println("  • Для ленивой загрузки (оптимизация)");
+        System.out.println("  • При работе со связями, которые могут не понадобиться");
+        System.out.println("  • В коде, где объект точно будет использован позже");
+
+        System.out.println("\n📌 Предупреждения:");
+        System.out.println("  • load() + закрытая сессия = LazyInitializationException");
+        System.out.println("  • load() с несуществующим ID = исключение при обращении");
+        System.out.println("  • Всегда проверяйте null после get()/find()");
+
+        System.out.println("\n📌 Современная практика:");
+        System.out.println("  // Для EntityManager (JPA):");
+        System.out.println("  User user = entityManager.find(User.class, id);");
+        System.out.println("  ");
+        System.out.println("  // Для Session (Hibernate):");
+        System.out.println("  User user = session.get(User.class, id); // или find()");
+        System.out.println("  // load() используйте осторожно!");
 
         System.out.println("\n=== Демонстрация завершена ===");
     }
