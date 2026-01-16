@@ -47,6 +47,8 @@ public class Main {
 
         demonstrateRefreshMethod(); // слайд 18
 
+        demonstrateDeletionMethods(); // слайд 19
+
         // shutdown
         HibernateUtil.shutdown();
     }
@@ -1817,6 +1819,127 @@ public class Main {
             System.out.println("   Уровень: " + newUser.getLevel() + " (может быть 51)");
 
             tx.commit();
+        }
+
+        System.out.println("\n=== Демонстрация завершена ===");
+    }
+
+    private static void demonstrateDeletionMethods() {
+        System.out.println("\n=== Демонстрация способов удаления ===");
+
+        // Подготовка: создадим пользователей для удаления
+        List<Integer> userIds = new ArrayList<>();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            for (int i = 1; i <= 5; i++) {
+                User user = new User("User" + i, "user" + i + "@example.com", i * 10);
+                session.persist(user);
+                userIds.add(user.getId());
+            }
+
+            tx.commit();
+            System.out.println("Создано 5 тестовых пользователей");
+        }
+
+        // 1. Удаление методом remove()
+        System.out.println("\n1. Удаление remove():");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            User user = session.get(User.class, userIds.get(0));
+            System.out.println("   Удаляем: " + user.getName());
+
+            session.remove(user); // Помечаем для удаления
+            System.out.println("   remove() вызван, объект в состоянии REMOVED");
+            System.out.println("   💡 Фактическое удаление в БД при коммите");
+
+            tx.commit();
+            System.out.println("   ✅ Пользователь удалён из БД");
+        }
+
+        // 2. Каскадное удаление (покажем на Employee и Tasks)
+        System.out.println("\n2. Каскадное удаление:");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // Создаём сотрудника с задачами
+            Employee emp = new Employee("Manager", "Boss", 5000);
+            session.persist(emp);
+
+            EmployeeTask task1 = new EmployeeTask("Report", emp, new Date(), "New");
+            EmployeeTask task2 = new EmployeeTask("Meeting", emp, new Date(), "New");
+            session.persist(task1);
+            session.persist(task2);
+
+            tx.commit();
+
+            System.out.println("   Создан Employee с 2 задачами");
+            System.out.println("   💡 Без каскада: нужно удалять задачи отдельно");
+            System.out.println("   💡 С каскадом: удаление Employee удалит задачи");
+        }
+
+        // 3. Orphan removal
+        System.out.println("\n3. Orphan removal:");
+        System.out.println("   // В аннотации @OneToMany:");
+        System.out.println("   @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)");
+        System.out.println("   private List<Task> tasks;");
+        System.out.println("   ");
+        System.out.println("   При удалении задачи из списка,");
+        System.out.println("   она автоматически удаляется из БД");
+
+        // 4. Удаление JPQL
+        System.out.println("\n4. Удаление JPQL:");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            int deleted = session.createQuery("DELETE FROM User WHERE id = :id")
+                    .setParameter("id", userIds.get(1))
+                    .executeUpdate();
+
+            System.out.println("   Удалено записей: " + deleted);
+            System.out.println("   💡 Прямое удаление в БД, минуя кэш");
+
+            tx.commit();
+        }
+
+        // 5. Удаление NativeQuery
+        System.out.println("\n5. Удаление NativeQuery:");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            int deleted = session.createNativeQuery("DELETE FROM users WHERE id = :id")
+                    .setParameter("id", userIds.get(2))
+                    .executeUpdate();
+
+            System.out.println("   Удалено записей: " + deleted);
+            System.out.println("   💡 Нативный SQL, полезно для сложных удалений");
+
+            tx.commit();
+        }
+
+        // 6. Мягкое удаление (soft delete)
+        System.out.println("\n6. Мягкое удаление (soft delete):");
+        System.out.println("   // Вместо удаления помечаем запись:");
+        System.out.println("   @Entity");
+        System.out.println("   @Table(name = \"users\")");
+        System.out.println("   @SQLDelete(sql = \"UPDATE users SET deleted = true WHERE id = ?\")");
+        System.out.println("   @Where(clause = \"deleted = false\")");
+        System.out.println("   public class User {");
+        System.out.println("       private boolean deleted;");
+        System.out.println("   }");
+        System.out.println("   ");
+        System.out.println("   Преимущества:");
+        System.out.println("   • История изменений");
+        System.out.println("   • Возможность восстановления");
+        System.out.println("   • Нет потери связанных данных");
+
+        // Проверим, сколько осталось пользователей
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Long count = session.createQuery("SELECT COUNT(*) FROM User", Long.class)
+                    .getSingleResult();
+            System.out.println("\nОсталось пользователей в БД: " + count);
         }
 
         System.out.println("\n=== Демонстрация завершена ===");
