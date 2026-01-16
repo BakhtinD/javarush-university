@@ -51,6 +51,8 @@ public class Main {
 
         demonstrateRemoveMethod(); // слайд 20
 
+        demonstrateCascadeDelete(); // слайд 21
+
         // shutdown
         HibernateUtil.shutdown();
     }
@@ -2021,6 +2023,99 @@ public class Main {
         System.out.println("   User user = session.get(User.class, id);");
         System.out.println("   session.close(); // объект detached");
         System.out.println("   newSession.remove(user); // 💥 нужно сначала merge()");
+
+        System.out.println("\n=== Демонстрация завершена ===");
+    }
+
+    private static void demonstrateCascadeDelete() {
+        System.out.println("\n=== Демонстрация каскадного удаления ===");
+
+        // Покажем разницу между каскадом в Hibernate и ограничениями БД
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // Создаём Employee с задачами
+            Employee emp = new Employee("John", "Manager", 5000);
+            session.persist(emp);
+
+            EmployeeTask task1 = new EmployeeTask("Report", emp, new Date(), "New");
+            EmployeeTask task2 = new EmployeeTask("Meeting", emp, new Date(), "New");
+            session.persist(task1);
+            session.persist(task2);
+
+            tx.commit();
+
+            System.out.println("Создан Employee с 2 задачами");
+            System.out.println("ID Employee: " + emp.getId());
+
+            // Проверим, сколько задач
+            Long taskCount = session.createQuery(
+                            "SELECT COUNT(*) FROM EmployeeTask WHERE employee.id = :empId", Long.class)
+                    .setParameter("empId", emp.getId())
+                    .getSingleResult();
+            System.out.println("Задач у сотрудника: " + taskCount);
+
+            // Пробуем удалить сотрудника БЕЗ каскада
+            System.out.println("\n--- Попытка удалить Employee (без каскада) ---");
+            Transaction tx2 = session.beginTransaction();
+
+            Employee empToDelete = session.find(Employee.class, emp.getId());
+            System.out.println("Удаляем Employee: " + empToDelete.getName());
+
+            try {
+                session.remove(empToDelete);
+                tx2.commit();
+                System.out.println("✅ Employee удалён");
+            } catch (Exception e) {
+                System.out.println("💥 Ошибка при удалении: " + e.getClass().getSimpleName());
+                System.out.println("Сообщение: " + e.getMessage());
+                System.out.println("\n💡 Почему ошибка?");
+                System.out.println("1. В БД есть FOREIGN KEY CONSTRAINT");
+                System.out.println("2. Задачи ссылаются на сотрудника");
+                System.out.println("3. БД защищает целостность данных");
+                System.out.println("4. Нужно либо:");
+                System.out.println("   - Удалить задачи сначала");
+                System.out.println("   - Использовать каскадное удаление в Hibernate");
+                System.out.println("   - Настроить ON DELETE CASCADE в БД");
+
+                tx2.rollback();
+            }
+
+            // Удалим правильно: сначала задачи
+            System.out.println("\n--- Правильное удаление ---");
+            Transaction tx3 = session.beginTransaction();
+
+            // 1. Удаляем все задачи сотрудника
+            int deletedTasks = session.createQuery(
+                            "DELETE FROM EmployeeTask WHERE employee.id = :empId")
+                    .setParameter("empId", emp.getId())
+                    .executeUpdate();
+            System.out.println("Удалено задач: " + deletedTasks);
+
+            // 2. Теперь можно удалить сотрудника
+            Employee empToDelete2 = session.find(Employee.class, emp.getId());
+            session.remove(empToDelete2);
+            tx3.commit();
+            System.out.println("✅ Employee удалён после удаления задач");
+        }
+
+        // Демонстрация как должно работать с каскадом
+        System.out.println("\n--- Как работает каскадное удаление ---");
+        System.out.println("\nС аннотацией каскада в Employee:");
+        System.out.println("@OneToMany(mappedBy = \"employee\", cascade = CascadeType.REMOVE)");
+        System.out.println("private List<EmployeeTask> tasks;");
+        System.out.println("\nТогда при удалении Employee:");
+        System.out.println("1. Hibernate сначала удалит все задачи");
+        System.out.println("2. Потом удалит сотрудника");
+        System.out.println("3. Всё в одной транзакции");
+        System.out.println("4. Ошибки CONSTRAINT не будет");
+
+        System.out.println("\nИли в БД можно настроить:");
+        System.out.println("ALTER TABLE tasks");
+        System.out.println("ADD CONSTRAINT fk_employee");
+        System.out.println("FOREIGN KEY (employee_id)");
+        System.out.println("REFERENCES employees(id)");
+        System.out.println("ON DELETE CASCADE;");
 
         System.out.println("\n=== Демонстрация завершена ===");
     }
