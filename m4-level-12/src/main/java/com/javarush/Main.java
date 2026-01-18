@@ -27,6 +27,8 @@ public class Main {
 
         demonstrateSlide9();
 
+        demonstrateSlide10();
+
         HibernateUtil.shutdown();
     }
 
@@ -277,6 +279,38 @@ public class Main {
             AssignmentId assignmentId = new AssignmentId("PROJ-2024", 1001);
             ProjectAssignment loaded3 = session.get(ProjectAssignment.class, assignmentId);
             System.out.println("  ProjectAssignment: " + loaded3);
+        }
+    }
+
+    private static void demonstrateSlide10() {
+        System.out.println("\n=== Слайд 10: @GeneratedValue ===");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            System.out.println("📌 Пример 1: IDENTITY (автоинкремент в MySQL)");
+            IdentityItem item1 = new IdentityItem("Item 1");
+            IdentityItem item2 = new IdentityItem("Item 2");
+
+            System.out.println("  Before save - ID 1: " + item1.getId());
+            System.out.println("  Before save - ID 2: " + item2.getId());
+
+            session.save(item1);
+            session.save(item2);
+
+            System.out.println("  After save - ID 1: " + item1.getId());
+            System.out.println("  After save - ID 2: " + item2.getId());
+
+            System.out.println("\n📌 Пример 2: SEQUENCE (эмуляция для MySQL)");
+            SequenceItem seqItem = new SequenceItem("Sequence Item");
+            session.save(seqItem);
+            System.out.println("  Sequence Item ID: " + seqItem.getId());
+
+            System.out.println("\n📌 Пример 3: TABLE (отдельная таблица генерации)");
+            TableItem tableItem = new TableItem("Table Item");
+            session.save(tableItem);
+            System.out.println("  Table Item ID: " + tableItem.getId());
+
+            transaction.commit();
         }
     }
 
