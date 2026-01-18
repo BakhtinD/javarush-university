@@ -6,6 +6,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.Date;
 
@@ -28,6 +29,8 @@ public class Main {
         demonstrateSlide9();
 
         demonstrateSlide10();
+
+        demonstrateSlide11();
 
         HibernateUtil.shutdown();
     }
@@ -311,6 +314,57 @@ public class Main {
             System.out.println("  Table Item ID: " + tableItem.getId());
 
             transaction.commit();
+        }
+    }
+
+    private static void demonstrateSlide11() {
+        System.out.println("\n=== Слайд 11: Маппинг дат с @Temporal ===");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Создаём объект Date для демонстрации
+            Date now = new Date();
+
+            // Форматируем для наглядности
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+            SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+            System.out.println("📅 Исходная дата (java.util.Date):");
+            System.out.println("  Полная дата: " + timestampFormat.format(now));
+            System.out.println("  Только дата: " + dateFormat.format(now));
+            System.out.println("  Только время: " + timeFormat.format(now));
+
+            // Создаём событие
+            LegacyEvent event = new LegacyEvent(
+                    "Team Meeting",
+                    now,   // eventTimestamp -> TIMESTAMP (по умолчанию)
+                    now,   // eventDate -> DATE (только дата)
+                    now,   // eventTime -> TIME (только время)
+                    now    // eventTimestampExplicit -> TIMESTAMP (явно)
+            );
+
+            session.save(event);
+            transaction.commit();
+
+            System.out.println("\n✅ LegacyEvent сохранён с разными @Temporal типами:");
+            System.out.println(event);
+
+            // Загружаем обратно
+            session.clear();
+            LegacyEvent loadedEvent = session.get(LegacyEvent.class, event.getId());
+
+            System.out.println("\n📦 Загружено из базы:");
+            System.out.println("  eventTimestamp: " + loadedEvent.getEventTimestamp());
+            System.out.println("  eventDate: " + loadedEvent.getEventDate());
+            System.out.println("  eventTime: " + loadedEvent.getEventTime());
+            System.out.println("  eventTimestampExplicit: " + loadedEvent.getEventTimestampExplicit());
+
+            // Покажем разницу в форматировании
+            System.out.println("\n📊 Как хранится в SQL:");
+            System.out.println("  event_timestamp -> TIMESTAMP: " + timestampFormat.format(loadedEvent.getEventTimestamp()));
+            System.out.println("  event_date -> DATE: " + dateFormat.format(loadedEvent.getEventDate()));
+            System.out.println("  event_time -> TIME: " + timeFormat.format(loadedEvent.getEventTime()));
         }
     }
 
