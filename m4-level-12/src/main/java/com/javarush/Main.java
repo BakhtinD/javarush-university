@@ -21,6 +21,8 @@ public class Main {
 
         demonstrateSlide6();
 
+        demonstrateSlide7();
+
         HibernateUtil.shutdown();
     }
 
@@ -127,4 +129,47 @@ public class Main {
             System.out.println("- is_public: 'T' (CHAR(1))");
         }
     }
+
+    private static void demonstrateSlide7() {
+        System.out.println("\n=== Слайд 7: Вычисляемые поля (@Transient, @Formula) ===");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Создаём прямоугольник
+            Rectangle rectangle = new Rectangle(
+                    "My Rectangle",
+                    10,   // width
+                    5     // height
+                    // perimeter вычисляется в конструкторе = (10+5)*2 = 30
+                    // area вычисляется через @Formula = 10*5 = 50
+                    // shapeType вычисляется через @Formula = 'WIDE' (width > height)
+            );
+
+            System.out.println("📐 Before saving:");
+            System.out.println("  Name: " + rectangle.getName());
+            System.out.println("  Width: " + rectangle.getWidth());
+            System.out.println("  Height: " + rectangle.getHeight());
+            System.out.println("  Perimeter (@Transient): " + rectangle.getPerimeter());
+            System.out.println("  Area (@Formula): " + rectangle.getArea());
+            System.out.println("  Shape Type (@Formula): " + rectangle.getShapeType());
+
+            session.save(rectangle);
+            transaction.commit();
+
+            System.out.println("\n✅ Rectangle saved to database");
+
+            // Очистим кэш и загрузим заново, чтобы увидеть @Formula в действии
+            session.clear();
+
+            Rectangle loadedRectangle = session.get(Rectangle.class, rectangle.getId());
+            System.out.println("\n📦 Loaded from database:");
+            System.out.println("  Name: " + loadedRectangle.getName());
+            System.out.println("  Width: " + loadedRectangle.getWidth());
+            System.out.println("  Height: " + loadedRectangle.getHeight());
+            System.out.println("  Perimeter (@Transient): " + loadedRectangle.getPerimeter() + " (lost after load)");
+            System.out.println("  Area (@Formula): " + loadedRectangle.getArea() + " (calculated by DB)");
+            System.out.println("  Shape Type (@Formula): " + loadedRectangle.getShapeType() + " (calculated by DB)");
+        }
+    }
+
 }

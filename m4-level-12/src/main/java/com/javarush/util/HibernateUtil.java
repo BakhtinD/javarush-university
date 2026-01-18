@@ -63,7 +63,7 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(Document.class);
                 metadataSources.addAnnotatedClass(ProductWithEnum.class);
                 metadataSources.addAnnotatedClass(QuizQuestion.class);
-
+                metadataSources.addAnnotatedClass(Rectangle.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
