@@ -3,6 +3,9 @@ package com.javarush.entity;
 import lombok.*;
 
 import javax.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Date;
 
 @Entity
 @Table(name = "users")
@@ -26,9 +29,37 @@ public class User {
     @Column(name = "level")
     private Integer level;
 
-    public User(String name, String email, Integer level) {
+    // Новые поля разных простых типов
+    @Column(name = "active")
+    private boolean active;                    // примитивный boolean
+
+    @Column(name = "score")
+    private Double score;                      // объектный Double
+
+    @Column(name = "salary", precision = 10, scale = 2)
+    private BigDecimal salary;                 // BigDecimal
+
+    @Column(name = "birth_date")
+    private LocalDate birthDate;               // java.time.LocalDate
+
+    @Column(name = "registration_date")
+    @Temporal(TemporalType.TIMESTAMP)          // старый java.util.Date
+    private Date registrationDate;
+
+    @Column(name = "avatar")
+    private byte[] avatar;                     // массив байт
+
+    public User(String name, String email, Integer level,
+                boolean active, Double score, BigDecimal salary,
+                LocalDate birthDate, Date registrationDate, byte[] avatar) {
         this.name = name;
         this.email = email;
         this.level = level;
+        this.active = active;
+        this.score = score;
+        this.salary = salary;
+        this.birthDate = birthDate;
+        this.registrationDate = registrationDate;
+        this.avatar = avatar;
     }
 }

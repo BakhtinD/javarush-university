@@ -1,27 +1,40 @@
 package com.javarush;
 
-import com.javarush.entity.Employee;
-import com.javarush.entity.EmployeeTask;
-import com.javarush.entity.Product;
 import com.javarush.entity.User;
 import com.javarush.util.HibernateUtil;
-import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
-import org.hibernate.proxy.HibernateProxy;
 
-import java.io.Serializable;
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
-import java.util.List;
-import java.util.Optional;
 
 public class Main {
 
     public static void main(String[] args) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
 
-        // shutdown
+            // Создаём пользователя с разными типами данных
+            User user = new User(
+                    "ivan_java",
+                    "ivan@example.com",
+                    42,
+                    true,                           // boolean
+                    95.5,                           // Double
+                    new BigDecimal("55000.75"),     // BigDecimal
+                    LocalDate.of(1990, 5, 15),      // LocalDate
+                    new Date(),                     // Date
+                    "avatar_data".getBytes()        // byte[]
+            );
+
+            session.save(user);
+            transaction.commit();
+
+            System.out.println("✅ Пользователь сохранён с разными типами данных:");
+            System.out.println(user);
+        }
+
         HibernateUtil.shutdown();
     }
-
 }
