@@ -25,6 +25,8 @@ public class Main {
 
         demonstrateSlide8();
 
+        demonstrateSlide9();
+
         HibernateUtil.shutdown();
     }
 
@@ -230,6 +232,51 @@ public class Main {
             System.out.println("  - country, city, street, house_number, zip_code (from Address)");
             System.out.println("  - delivery_country, delivery_city, delivery_street, delivery_house_number, delivery_zip_code (from Address with @AttributeOverrides)");
             System.out.println("  - email, registration_date");
+        }
+    }
+
+    private static void demonstrateSlide9() {
+        System.out.println("\n=== Слайд 9: Аннотация @Id ===");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            System.out.println("📌 Пример 1: Simple Integer ID");
+            SimpleItem item1 = new SimpleItem("Laptop");
+            item1.setId(1);
+            session.save(item1);
+            System.out.println("  Saved: " + item1);
+
+            System.out.println("\n📌 Пример 2: UUID ID");
+            UuidItem item2 = new UuidItem("Smartphone");
+            session.save(item2);
+            System.out.println("  Saved: " + item2);
+            System.out.println("  UUID: " + item2.getId());
+
+            System.out.println("\n📌 Пример 3: Composite ID with @EmbeddedId");
+            ProjectAssignment assignment = new ProjectAssignment(
+                    "PROJ-2024",
+                    1001,
+                    "Lead Developer",
+                    LocalDate.of(2024, 1, 1)
+            );
+            session.save(assignment);
+            System.out.println("  Saved: " + assignment);
+
+            transaction.commit();
+
+            // Загружаем обратно
+            System.out.println("\n📦 Загружаем из базы:");
+
+            SimpleItem loaded1 = session.get(SimpleItem.class, 1);
+            System.out.println("  SimpleItem: " + loaded1);
+
+            UuidItem loaded2 = session.get(UuidItem.class, item2.getId());
+            System.out.println("  UuidItem: " + loaded2);
+
+            // Для @EmbeddedId
+            AssignmentId assignmentId = new AssignmentId("PROJ-2024", 1001);
+            ProjectAssignment loaded3 = session.get(ProjectAssignment.class, assignmentId);
+            System.out.println("  ProjectAssignment: " + loaded3);
         }
     }
 

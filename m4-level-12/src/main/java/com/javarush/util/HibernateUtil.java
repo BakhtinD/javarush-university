@@ -67,6 +67,10 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(Address.class);
                 metadataSources.addAnnotatedClass(FullName.class);
                 metadataSources.addAnnotatedClass(Customer.class);
+                metadataSources.addAnnotatedClass(AssignmentId.class);
+                metadataSources.addAnnotatedClass(ProjectAssignment.class);
+                metadataSources.addAnnotatedClass(SimpleItem.class);
+                metadataSources.addAnnotatedClass(UuidItem.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
