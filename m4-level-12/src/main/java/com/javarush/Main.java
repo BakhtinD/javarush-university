@@ -23,6 +23,8 @@ public class Main {
 
         demonstrateSlide7();
 
+        demonstrateSlide8();
+
         HibernateUtil.shutdown();
     }
 
@@ -169,6 +171,65 @@ public class Main {
             System.out.println("  Perimeter (@Transient): " + loadedRectangle.getPerimeter() + " (lost after load)");
             System.out.println("  Area (@Formula): " + loadedRectangle.getArea() + " (calculated by DB)");
             System.out.println("  Shape Type (@Formula): " + loadedRectangle.getShapeType() + " (calculated by DB)");
+        }
+    }
+
+    private static void demonstrateSlide8() {
+        System.out.println("\n=== Слайд 8: @Embedded и @Embeddable ===");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Создаём встроенные объекты
+            FullName fullName = new FullName("John", "Doe", "Michael");
+
+            Address homeAddress = new Address(
+                    "USA",
+                    "New York",
+                    "5th Avenue",
+                    "123",
+                    "10001"
+            );
+
+            Address deliveryAddress = new Address(
+                    "USA",
+                    "Brooklyn",
+                    "Park Slope",
+                    "456",
+                    "11215"
+            );
+
+            // Создаём клиента с встроенными объектами
+            Customer customer = new Customer(
+                    fullName,
+                    homeAddress,
+                    deliveryAddress,
+                    "john.doe@example.com",
+                    LocalDate.now()
+            );
+
+            session.save(customer);
+            transaction.commit();
+
+            System.out.println("✅ Customer saved with embedded objects:");
+            System.out.println(customer);
+
+            // Загружаем и проверяем
+            session.clear();
+            Customer loadedCustomer = session.get(Customer.class, customer.getId());
+
+            System.out.println("\n📦 Loaded from database:");
+            System.out.println("  Full Name: " + loadedCustomer.getFullName());
+            System.out.println("  Home Address: " + loadedCustomer.getAddress());
+            System.out.println("  Delivery Address: " + loadedCustomer.getDeliveryAddress());
+            System.out.println("  Email: " + loadedCustomer.getEmail());
+            System.out.println("  Registration Date: " + loadedCustomer.getRegistrationDate());
+
+            // Покажем структуру таблицы
+            System.out.println("\n📊 Table structure (columns):");
+            System.out.println("  - first_name, last_name, middle_name (from FullName)");
+            System.out.println("  - country, city, street, house_number, zip_code (from Address)");
+            System.out.println("  - delivery_country, delivery_city, delivery_street, delivery_house_number, delivery_zip_code (from Address with @AttributeOverrides)");
+            System.out.println("  - email, registration_date");
         }
     }
 
