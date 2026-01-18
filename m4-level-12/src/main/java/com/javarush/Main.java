@@ -7,7 +7,7 @@ import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
+import java.time.*;
 import java.util.Date;
 
 public class Main {
@@ -31,6 +31,8 @@ public class Main {
         demonstrateSlide10();
 
         demonstrateSlide11();
+
+        demonstrateSlide12();
 
         HibernateUtil.shutdown();
     }
@@ -365,6 +367,68 @@ public class Main {
             System.out.println("  event_timestamp -> TIMESTAMP: " + timestampFormat.format(loadedEvent.getEventTimestamp()));
             System.out.println("  event_date -> DATE: " + dateFormat.format(loadedEvent.getEventDate()));
             System.out.println("  event_time -> TIME: " + timeFormat.format(loadedEvent.getEventTime()));
+        }
+
+    }
+
+    private static void demonstrateSlide12() {
+        System.out.println("\n=== Слайд 12: Современный маппинг дат (java.time) ===");
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Создаём различные java.time объекты
+            LocalDate localDate = LocalDate.of(2024, 1, 18);
+            LocalTime localTime = LocalTime.of(14, 30, 45);
+            LocalDateTime localDateTime = LocalDateTime.of(localDate, localTime);
+            Instant instant = Instant.now();
+            OffsetDateTime offsetDateTime = OffsetDateTime.of(localDateTime, ZoneOffset.ofHours(3));
+            ZonedDateTime zonedDateTime = ZonedDateTime.of(localDateTime, ZoneId.of("Europe/Moscow"));
+
+            System.out.println("🕐 Созданы java.time объекты:");
+            System.out.println("  LocalDate: " + localDate);
+            System.out.println("  LocalTime: " + localTime);
+            System.out.println("  LocalDateTime: " + localDateTime);
+            System.out.println("  Instant: " + instant);
+            System.out.println("  OffsetDateTime (+03:00): " + offsetDateTime);
+            System.out.println("  ZonedDateTime (Europe/Moscow): " + zonedDateTime);
+
+            // Создаём современное событие
+            ModernEvent event = new ModernEvent(
+                    "Java Conference 2024",
+                    localDate,
+                    localTime,
+                    localDateTime,
+                    instant,
+                    offsetDateTime,
+                    zonedDateTime
+            );
+
+            session.save(event);
+            transaction.commit();
+
+            System.out.println("\n✅ ModernEvent сохранён с java.time типами:");
+            System.out.println(event);
+
+            // Загружаем обратно
+            session.clear();
+            ModernEvent loadedEvent = session.get(ModernEvent.class, event.getId());
+
+            System.out.println("\n📦 Загружено из базы:");
+            System.out.println("  eventDate (LocalDate): " + loadedEvent.getEventDate());
+            System.out.println("  eventTime (LocalTime): " + loadedEvent.getEventTime());
+            System.out.println("  eventDateTime (LocalDateTime): " + loadedEvent.getEventDateTime());
+            System.out.println("  eventInstant (Instant): " + loadedEvent.getEventInstant());
+            System.out.println("  eventOffset (OffsetDateTime): " + loadedEvent.getEventOffset());
+            System.out.println("  eventZoned (ZonedDateTime): " + loadedEvent.getEventZoned());
+
+            // Покажем SQL-типы
+            System.out.println("\n📊 Соответствие Java типов → SQL типов:");
+            System.out.println("  LocalDate → DATE");
+            System.out.println("  LocalTime → TIME");
+            System.out.println("  LocalDateTime → TIMESTAMP");
+            System.out.println("  Instant → TIMESTAMP (UTC)");
+            System.out.println("  OffsetDateTime → TIMESTAMP WITH TIME ZONE");
+            System.out.println("  ZonedDateTime → TIMESTAMP WITH TIME ZONE");
         }
     }
 

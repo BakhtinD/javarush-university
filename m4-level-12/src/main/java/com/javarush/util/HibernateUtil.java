@@ -78,6 +78,8 @@ public class HibernateUtil {
 
                 metadataSources.addAnnotatedClass(LegacyEvent.class);
 
+                metadataSources.addAnnotatedClass(ModernEvent.class);
+
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
 
