@@ -80,6 +80,9 @@ public class HibernateUtil {
 
                 metadataSources.addAnnotatedClass(ModernEvent.class);
 
+                metadataSources.addAnnotatedClass(TimeZoneDemo.class);
+
+
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
 

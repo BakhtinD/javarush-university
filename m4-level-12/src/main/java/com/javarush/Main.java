@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.*;
 import java.util.Date;
+import java.util.TimeZone;
 
 public class Main {
 
@@ -33,6 +34,8 @@ public class Main {
         demonstrateSlide11();
 
         demonstrateSlide12();
+
+        demonstrateSlide13();
 
         HibernateUtil.shutdown();
     }
@@ -429,6 +432,76 @@ public class Main {
             System.out.println("  Instant → TIMESTAMP (UTC)");
             System.out.println("  OffsetDateTime → TIMESTAMP WITH TIME ZONE");
             System.out.println("  ZonedDateTime → TIMESTAMP WITH TIME ZONE");
+        }
+    }
+
+    private static void demonstrateSlide13() {
+        System.out.println("\n=== Слайд 13: Установка временной зоны ===");
+
+        // Покажем текущие настройки
+        System.out.println("📊 Текущие настройки часовых поясов:");
+        System.out.println("  1. JVM TimeZone: " + TimeZone.getDefault().getID());
+        System.out.println("  2. System default: " + ZoneId.systemDefault());
+        System.out.println("  3. Current instant (UTC): " + Instant.now());
+        System.out.println("  4. Local time in Moscow: " +
+                ZonedDateTime.now(ZoneId.of("Europe/Moscow")));
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Создаём объекты в разных поясах
+            LocalDate localDate = LocalDate.of(2024, 6, 15); // Без пояса
+            LocalDateTime localDateTime = LocalDateTime.of(2024, 6, 15, 14, 30); // Без пояса
+            Instant instant = Instant.now(); // Всегда UTC
+            OffsetDateTime offsetDateTime = OffsetDateTime.of(
+                    localDateTime,
+                    ZoneOffset.ofHours(3) // +03:00
+            );
+            Date utilDate = new Date(); // Зависит от JVM timezone
+
+            TimeZoneDemo demo = new TimeZoneDemo(
+                    "Timezone Demo",
+                    localDate,
+                    localDateTime,
+                    instant,
+                    offsetDateTime,
+                    utilDate
+            );
+
+            System.out.println("\n📝 Сохраняемый объект:");
+            System.out.println("  LocalDate: " + demo.getLocalDate());
+            System.out.println("  LocalDateTime: " + demo.getLocalDateTime());
+            System.out.println("  Instant: " + demo.getInstant());
+            System.out.println("  OffsetDateTime: " + demo.getOffsetDateTime());
+            System.out.println("  UtilDate: " + demo.getUtilDate());
+
+            session.save(demo);
+            transaction.commit();
+
+            System.out.println("\n✅ Объект сохранён в БД");
+
+            // Загружаем обратно
+            session.clear();
+            TimeZoneDemo loaded = session.get(TimeZoneDemo.class, demo.getId());
+
+            System.out.println("\n📦 Загружено из БД:");
+            System.out.println("  LocalDate: " + loaded.getLocalDate());
+            System.out.println("  LocalDateTime: " + loaded.getLocalDateTime());
+            System.out.println("  Instant: " + loaded.getInstant());
+            System.out.println("  OffsetDateTime: " + loaded.getOffsetDateTime());
+            System.out.println("  UtilDate: " + loaded.getUtilDate());
+
+            // Демонстрация проблемы с Date
+            System.out.println("\n⚠️  Потенциальные проблемы:");
+            System.out.println("  - java.util.Date зависит от JVM TimeZone");
+            System.out.println("  - Если JVM TimeZone поменяется, Date будет интерпретироваться по-другому");
+            System.out.println("  - Решение: использовать Instant или хранить в UTC");
+
+            System.out.println("\n🎯 Рекомендации:");
+            System.out.println("  1. Храните даты в БД в UTC");
+            System.out.println("  2. Установите JVM TimeZone: -Duser.timezone=UTC");
+            System.out.println("  3. Используйте java.time вместо java.util.Date");
+            System.out.println("  4. Для Hibernate можно установить: hibernate.jdbc.time_zone=UTC");
         }
     }
 
