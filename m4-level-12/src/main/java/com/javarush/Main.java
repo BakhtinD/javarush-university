@@ -60,7 +60,7 @@ public class Main {
             session.save(user);
             transaction.commit();
 
-            System.out.println("✅ Пользователь сохранён с разными типами данных:");
+            System.out.println("Пользователь сохранён с разными типами данных:");
             System.out.println(user);
         }
     }
@@ -81,7 +81,7 @@ public class Main {
             session.save(doc);
             transaction.commit();
 
-            System.out.println("✅ Документ сохранён с разными Boolean-маппингами:");
+            System.out.println("Документ сохранён с разными Boolean-маппингами:");
             System.out.println(doc);
         }
     }
@@ -101,7 +101,7 @@ public class Main {
             session.save(product);
             transaction.commit();
 
-            System.out.println("✅ Продукт сохранён с enum:");
+            System.out.println("Продукт сохранён с enum:");
             System.out.println(product);
 
             // Загрузим обратно, чтобы убедиться, что маппинг работает
@@ -131,11 +131,11 @@ public class Main {
             session.save(question);
             transaction.commit();
 
-            System.out.println("✅ Вопрос викторины сохранён с разными Boolean-маппингами:");
+            System.out.println("Вопрос викторины сохранён с разными Boolean-маппингами:");
             System.out.println(question);
 
             // Проверим SQL-логи
-            System.out.println("\n📊 В SQL это выглядит так:");
+            System.out.println("\n В SQL это выглядит так:");
             System.out.println("- is_active: 1 (BIT/TINYINT)");
             System.out.println("- is_approved: 1 (numeric_boolean)");
             System.out.println("- is_verified: 'Y' (yes_no)");
@@ -159,7 +159,7 @@ public class Main {
                     // shapeType вычисляется через @Formula = 'WIDE' (width > height)
             );
 
-            System.out.println("📐 Before saving:");
+            System.out.println(" Before saving:");
             System.out.println("  Name: " + rectangle.getName());
             System.out.println("  Width: " + rectangle.getWidth());
             System.out.println("  Height: " + rectangle.getHeight());
@@ -170,13 +170,13 @@ public class Main {
             session.save(rectangle);
             transaction.commit();
 
-            System.out.println("\n✅ Rectangle saved to database");
+            System.out.println("\n Rectangle saved to database");
 
             // Очистим кэш и загрузим заново, чтобы увидеть @Formula в действии
             session.clear();
 
             Rectangle loadedRectangle = session.get(Rectangle.class, rectangle.getId());
-            System.out.println("\n📦 Loaded from database:");
+            System.out.println("\n Loaded from database:");
             System.out.println("  Name: " + loadedRectangle.getName());
             System.out.println("  Width: " + loadedRectangle.getWidth());
             System.out.println("  Height: " + loadedRectangle.getHeight());
@@ -222,14 +222,14 @@ public class Main {
             session.save(customer);
             transaction.commit();
 
-            System.out.println("✅ Customer saved with embedded objects:");
+            System.out.println(" Customer saved with embedded objects:");
             System.out.println(customer);
 
             // Загружаем и проверяем
             session.clear();
             Customer loadedCustomer = session.get(Customer.class, customer.getId());
 
-            System.out.println("\n📦 Loaded from database:");
+            System.out.println("\n Loaded from database:");
             System.out.println("  Full Name: " + loadedCustomer.getFullName());
             System.out.println("  Home Address: " + loadedCustomer.getAddress());
             System.out.println("  Delivery Address: " + loadedCustomer.getDeliveryAddress());
@@ -237,7 +237,7 @@ public class Main {
             System.out.println("  Registration Date: " + loadedCustomer.getRegistrationDate());
 
             // Покажем структуру таблицы
-            System.out.println("\n📊 Table structure (columns):");
+            System.out.println("\n Table structure (columns):");
             System.out.println("  - first_name, last_name, middle_name (from FullName)");
             System.out.println("  - country, city, street, house_number, zip_code (from Address)");
             System.out.println("  - delivery_country, delivery_city, delivery_street, delivery_house_number, delivery_zip_code (from Address with @AttributeOverrides)");
@@ -250,19 +250,19 @@ public class Main {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
 
-            System.out.println("📌 Пример 1: Simple Integer ID");
+            System.out.println(" Пример 1: Simple Integer ID");
             SimpleItem item1 = new SimpleItem("Laptop");
             item1.setId(1);
             session.save(item1);
             System.out.println("  Saved: " + item1);
 
-            System.out.println("\n📌 Пример 2: UUID ID");
+            System.out.println("\n Пример 2: UUID ID");
             UuidItem item2 = new UuidItem("Smartphone");
             session.save(item2);
             System.out.println("  Saved: " + item2);
             System.out.println("  UUID: " + item2.getId());
 
-            System.out.println("\n📌 Пример 3: Composite ID with @EmbeddedId");
+            System.out.println("\n Пример 3: Composite ID with @EmbeddedId");
             ProjectAssignment assignment = new ProjectAssignment(
                     "PROJ-2024",
                     1001,
@@ -275,7 +275,7 @@ public class Main {
             transaction.commit();
 
             // Загружаем обратно
-            System.out.println("\n📦 Загружаем из базы:");
+            System.out.println("\n Загружаем из базы:");
 
             SimpleItem loaded1 = session.get(SimpleItem.class, 1);
             System.out.println("  SimpleItem: " + loaded1);
@@ -295,7 +295,7 @@ public class Main {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
 
-            System.out.println("📌 Пример 1: IDENTITY (автоинкремент в MySQL)");
+            System.out.println(" Пример 1: IDENTITY (автоинкремент в MySQL)");
             IdentityItem item1 = new IdentityItem("Item 1");
             IdentityItem item2 = new IdentityItem("Item 2");
 
@@ -308,12 +308,12 @@ public class Main {
             System.out.println("  After save - ID 1: " + item1.getId());
             System.out.println("  After save - ID 2: " + item2.getId());
 
-            System.out.println("\n📌 Пример 2: SEQUENCE (эмуляция для MySQL)");
+            System.out.println("\n Пример 2: SEQUENCE (эмуляция для MySQL)");
             SequenceItem seqItem = new SequenceItem("Sequence Item");
             session.save(seqItem);
             System.out.println("  Sequence Item ID: " + seqItem.getId());
 
-            System.out.println("\n📌 Пример 3: TABLE (отдельная таблица генерации)");
+            System.out.println("\n Пример 3: TABLE (отдельная таблица генерации)");
             TableItem tableItem = new TableItem("Table Item");
             session.save(tableItem);
             System.out.println("  Table Item ID: " + tableItem.getId());
@@ -335,7 +335,7 @@ public class Main {
             SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
             SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-            System.out.println("📅 Исходная дата (java.util.Date):");
+            System.out.println(" Исходная дата (java.util.Date):");
             System.out.println("  Полная дата: " + timestampFormat.format(now));
             System.out.println("  Только дата: " + dateFormat.format(now));
             System.out.println("  Только время: " + timeFormat.format(now));
@@ -352,21 +352,21 @@ public class Main {
             session.save(event);
             transaction.commit();
 
-            System.out.println("\n✅ LegacyEvent сохранён с разными @Temporal типами:");
+            System.out.println("\n LegacyEvent сохранён с разными @Temporal типами:");
             System.out.println(event);
 
             // Загружаем обратно
             session.clear();
             LegacyEvent loadedEvent = session.get(LegacyEvent.class, event.getId());
 
-            System.out.println("\n📦 Загружено из базы:");
+            System.out.println("\n Загружено из базы:");
             System.out.println("  eventTimestamp: " + loadedEvent.getEventTimestamp());
             System.out.println("  eventDate: " + loadedEvent.getEventDate());
             System.out.println("  eventTime: " + loadedEvent.getEventTime());
             System.out.println("  eventTimestampExplicit: " + loadedEvent.getEventTimestampExplicit());
 
             // Покажем разницу в форматировании
-            System.out.println("\n📊 Как хранится в SQL:");
+            System.out.println("\n Как хранится в SQL:");
             System.out.println("  event_timestamp -> TIMESTAMP: " + timestampFormat.format(loadedEvent.getEventTimestamp()));
             System.out.println("  event_date -> DATE: " + dateFormat.format(loadedEvent.getEventDate()));
             System.out.println("  event_time -> TIME: " + timeFormat.format(loadedEvent.getEventTime()));
@@ -387,7 +387,7 @@ public class Main {
             OffsetDateTime offsetDateTime = OffsetDateTime.of(localDateTime, ZoneOffset.ofHours(3));
             ZonedDateTime zonedDateTime = ZonedDateTime.of(localDateTime, ZoneId.of("Europe/Moscow"));
 
-            System.out.println("🕐 Созданы java.time объекты:");
+            System.out.println(" Созданы java.time объекты:");
             System.out.println("  LocalDate: " + localDate);
             System.out.println("  LocalTime: " + localTime);
             System.out.println("  LocalDateTime: " + localDateTime);
@@ -409,14 +409,14 @@ public class Main {
             session.save(event);
             transaction.commit();
 
-            System.out.println("\n✅ ModernEvent сохранён с java.time типами:");
+            System.out.println("\n ModernEvent сохранён с java.time типами:");
             System.out.println(event);
 
             // Загружаем обратно
             session.clear();
             ModernEvent loadedEvent = session.get(ModernEvent.class, event.getId());
 
-            System.out.println("\n📦 Загружено из базы:");
+            System.out.println("\n Загружено из базы:");
             System.out.println("  eventDate (LocalDate): " + loadedEvent.getEventDate());
             System.out.println("  eventTime (LocalTime): " + loadedEvent.getEventTime());
             System.out.println("  eventDateTime (LocalDateTime): " + loadedEvent.getEventDateTime());
@@ -425,7 +425,7 @@ public class Main {
             System.out.println("  eventZoned (ZonedDateTime): " + loadedEvent.getEventZoned());
 
             // Покажем SQL-типы
-            System.out.println("\n📊 Соответствие Java типов → SQL типов:");
+            System.out.println("\n Соответствие Java типов → SQL типов:");
             System.out.println("  LocalDate → DATE");
             System.out.println("  LocalTime → TIME");
             System.out.println("  LocalDateTime → TIMESTAMP");
@@ -439,7 +439,7 @@ public class Main {
         System.out.println("\n=== Слайд 13: Установка временной зоны ===");
 
         // Покажем текущие настройки
-        System.out.println("📊 Текущие настройки часовых поясов:");
+        System.out.println(" Текущие настройки часовых поясов:");
         System.out.println("  1. JVM TimeZone: " + TimeZone.getDefault().getID());
         System.out.println("  2. System default: " + ZoneId.systemDefault());
         System.out.println("  3. Current instant (UTC): " + Instant.now());
@@ -468,7 +468,7 @@ public class Main {
                     utilDate
             );
 
-            System.out.println("\n📝 Сохраняемый объект:");
+            System.out.println("\n Сохраняемый объект:");
             System.out.println("  LocalDate: " + demo.getLocalDate());
             System.out.println("  LocalDateTime: " + demo.getLocalDateTime());
             System.out.println("  Instant: " + demo.getInstant());
@@ -478,13 +478,13 @@ public class Main {
             session.save(demo);
             transaction.commit();
 
-            System.out.println("\n✅ Объект сохранён в БД");
+            System.out.println("\n Объект сохранён в БД");
 
             // Загружаем обратно
             session.clear();
             TimeZoneDemo loaded = session.get(TimeZoneDemo.class, demo.getId());
 
-            System.out.println("\n📦 Загружено из БД:");
+            System.out.println("\n Загружено из БД:");
             System.out.println("  LocalDate: " + loaded.getLocalDate());
             System.out.println("  LocalDateTime: " + loaded.getLocalDateTime());
             System.out.println("  Instant: " + loaded.getInstant());
@@ -492,12 +492,12 @@ public class Main {
             System.out.println("  UtilDate: " + loaded.getUtilDate());
 
             // Демонстрация проблемы с Date
-            System.out.println("\n⚠️  Потенциальные проблемы:");
+            System.out.println("\n  Потенциальные проблемы:");
             System.out.println("  - java.util.Date зависит от JVM TimeZone");
             System.out.println("  - Если JVM TimeZone поменяется, Date будет интерпретироваться по-другому");
             System.out.println("  - Решение: использовать Instant или хранить в UTC");
 
-            System.out.println("\n🎯 Рекомендации:");
+            System.out.println("\n Рекомендации:");
             System.out.println("  1. Храните даты в БД в UTC");
             System.out.println("  2. Установите JVM TimeZone: -Duser.timezone=UTC");
             System.out.println("  3. Используйте java.time вместо java.util.Date");
