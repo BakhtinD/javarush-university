@@ -56,16 +56,7 @@ public class HibernateUtil {
                 MetadataSources metadataSources = new MetadataSources(serviceRegistry);
 
                 // Регистрируем сущности
-//                metadataSources.addAnnotatedClass(User.class);
-//                metadataSources.addAnnotatedClass(Employee.class);
-//
-//                metadataSources.addAnnotatedClass(Author.class);
-//                metadataSources.addAnnotatedClass(Book.class);
-//                metadataSources.addAnnotatedClass(BookDetail.class);
-//
-//                metadataSources.addAnnotatedClass(Worker.class);
-//                metadataSources.addAnnotatedClass(Task.class);
-
+                metadataSources.addAnnotatedClass(User.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
