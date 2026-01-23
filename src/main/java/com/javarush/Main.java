@@ -35,8 +35,11 @@ public class Main {
             Book book1 = new Book("1984");
             Book book2 = new Book("Animal Farm");
 
+            // Устанавливаем связь с обеих сторон
             book1.setAuthor(author);
             book2.setAuthor(author);
+            author.getBooks().add(book1);
+            author.getBooks().add(book2);
 
             session.save(book1);
             session.save(book2);
@@ -44,6 +47,7 @@ public class Main {
             BookDetail detail = new BookDetail("123-123-1234", 328);
             detail.setBook(book1);
             session.save(detail);
+            session.save(author);
 
             transaction.commit();
 
