@@ -1,11 +1,12 @@
 package com.javarush.entity;
 
 import lombok.*;
-
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -29,25 +30,30 @@ public class User {
     @Column(name = "level")
     private Integer level;
 
-    // Новые поля разных простых типов
     @Column(name = "active")
-    private boolean active;                    // примитивный boolean
+    private boolean active;
 
     @Column(name = "score")
-    private Double score;                      // объектный Double
+    private Double score;
 
     @Column(name = "salary", precision = 10, scale = 2)
-    private BigDecimal salary;                 // BigDecimal
+    private BigDecimal salary;
 
     @Column(name = "birth_date")
-    private LocalDate birthDate;               // java.time.LocalDate
+    private LocalDate birthDate;
 
     @Column(name = "registration_date")
-    @Temporal(TemporalType.TIMESTAMP)          // старый java.util.Date
+    @Temporal(TemporalType.TIMESTAMP)
     private Date registrationDate;
 
     @Column(name = "avatar")
-    private byte[] avatar;                     // массив байт
+    private byte[] avatar;
+
+    // НОВОЕ: Коллекция строк (сообщений пользователя)
+    @ElementCollection
+    @CollectionTable(name = "user_messages", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "message")
+    private List<String> messages = new ArrayList<>();
 
     public User(String name, String email, Integer level,
                 boolean active, Double score, BigDecimal salary,
