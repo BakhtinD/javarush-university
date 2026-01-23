@@ -100,6 +100,9 @@ public class Main {
             // 3. Связываем книги с автором (Many-to-One)
             book1.setAuthor(author);
             book2.setAuthor(author);
+            // Важно! Обязательно устанавливаем связь с обеих сторон
+            author.getBooks().add(book1);
+            author.getBooks().add(book2);
 
             session.save(book1);
             session.save(book2);
