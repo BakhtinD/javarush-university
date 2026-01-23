@@ -1,7 +1,6 @@
 package com.javarush;
 
-import com.javarush.entity.Employee;
-import com.javarush.entity.User;
+import com.javarush.entity.*;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -17,6 +16,8 @@ public class Main {
         demonstrateSlide3();
 
         demonstrateSlide4();
+
+        demonstrateSlide5();
 
         HibernateUtil.shutdown();
     }
@@ -77,6 +78,40 @@ public class Main {
             System.out.println("Employee ID: " + employee.getId());
             System.out.println("Skills (List, ordered): " + employee.getSkills());
             System.out.println("Languages (Set, unique): " + employee.getLanguages());
+        }
+    }
+
+    private static void demonstrateSlide5() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // 1. Создаём автора
+            Author author = new Author("George Orwell");
+            session.save(author);
+
+            // 2. Создаём книги
+            Book book1 = new Book("1984");
+            Book book2 = new Book("Animal Farm");
+
+            // 3. Связываем книги с автором (Many-to-One)
+            book1.setAuthor(author);
+            book2.setAuthor(author);
+
+            session.save(book1);
+            session.save(book2);
+
+            // 4. Создаём детали для книги (One-to-One)
+            BookDetail detail = new BookDetail("978-0451524935", 328);
+            detail.setBook(book1);
+            session.save(detail);
+
+            transaction.commit();
+
+            System.out.println("\n✅ Slide 5: Entity Relationships");
+            System.out.println("Author: " + author.getName());
+            System.out.println("Books by author: " + author.getBooks().size());
+            System.out.println("Book '1984' author: " + book1.getAuthor().getName());
+            System.out.println("Book ISBN: " + detail.getIsbn());
         }
     }
 
