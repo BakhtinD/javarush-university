@@ -4,10 +4,12 @@ import com.javarush.entity.*;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
 
 public class Main {
 
@@ -18,6 +20,8 @@ public class Main {
         demonstrateSlide4();
 
         demonstrateSlide5();
+
+        demonstrateSlide7();
 
         HibernateUtil.shutdown();
     }
@@ -112,6 +116,88 @@ public class Main {
             System.out.println("Books by author: " + author.getBooks().size());
             System.out.println("Book '1984' author: " + book1.getAuthor().getName());
             System.out.println("Book ISBN: " + detail.getIsbn());
+        }
+    }
+
+    private static void demonstrateSlide7() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Создаём тестовые данные
+            Worker worker1 = new Worker("John Smith");
+            Worker worker2 = new Worker("Alice Johnson");
+            Worker director = new Worker("Director Bob");
+
+            session.save(worker1);
+            session.save(worker2);
+            session.save(director);
+
+            // Задачи для worker1
+            Task task1 = new Task("Fix bugs", LocalDate.of(2024, 1, 15));
+            Task task2 = new Task("Write docs", LocalDate.of(2024, 2, 20));
+            task1.setWorker(worker1);
+            task2.setWorker(worker1);
+
+            // Просроченная задача для worker2
+            Task task3 = new Task("Update server", LocalDate.of(2023, 12, 1));
+            task3.setWorker(worker2);
+
+            // Неназначенная задача
+            Task task4 = new Task("Plan meeting", LocalDate.of(2024, 3, 1));
+            // worker не установлен - задача неназначенная
+
+            session.save(task1);
+            session.save(task2);
+            session.save(task3);
+            session.save(task4);
+
+            transaction.commit();
+
+            System.out.println("\n✅ Slide 7: HQL Query Examples");
+            System.out.println("Test data created.");
+
+            // ========== ЗАПРОС 1 ==========
+            // Все задачи, назначенные на John Smith
+            System.out.println("\n1. Все задачи John Smith:");
+            Query<Task> query1 = session.createQuery(
+                    "from Task where worker.name = :workerName", Task.class
+            );
+            query1.setParameter("workerName", "John Smith");
+            List<Task> johnsTasks = query1.list();
+            johnsTasks.forEach(t -> System.out.println("  - " + t.getDescription()));
+
+            // ========== ЗАПРОС 2 ==========
+            // Сотрудники с просроченными задачами
+            System.out.println("\n2. Сотрудники с просроченными задачами:");
+            Query<Worker> query2 = session.createQuery(
+                    "select distinct worker from Task where deadline < current_date", Worker.class
+            );
+            List<Worker> workersWithOverdue = query2.list();
+            workersWithOverdue.forEach(w -> System.out.println("  - " + w.getName()));
+
+            // ========== ЗАПРОС 3 ==========
+            // Назначаем все неназначенные задачи на директора
+            System.out.println("\n3. Назначаем неназначенные задачи на директора...");
+            transaction = session.beginTransaction();
+
+            Query<?> query3 = session.createQuery(
+                    "update Task set worker = :director where worker is null"
+            );
+            query3.setParameter("director", director);
+            int updatedCount = query3.executeUpdate();
+
+            transaction.commit();
+            System.out.println("   Назначено задач: " + updatedCount);
+
+            // Проверяем результат
+            Query<Task> query4 = session.createQuery(
+                    "from Task where worker.name = 'Director Bob'", Task.class
+            );
+            List<Task> directorsTasks = query4.list();
+            System.out.println("   Теперь у директора задач: " + directorsTasks.size());
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
