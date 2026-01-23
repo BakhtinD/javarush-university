@@ -1,5 +1,6 @@
 package com.javarush;
 
+import com.javarush.entity.Employee;
 import com.javarush.entity.User;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
@@ -14,6 +15,8 @@ public class Main {
     public static void main(String[] args) {
 
         demonstrateSlide3();
+
+        demonstrateSlide4();
 
         HibernateUtil.shutdown();
     }
@@ -49,4 +52,32 @@ public class Main {
         }
 
     }
+
+    private static void demonstrateSlide4() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Создаём сотрудника
+            Employee employee = new Employee("John Doe");
+
+            // 1. List<String> - упорядоченные навыки
+            employee.getSkills().add("Java");
+            employee.getSkills().add("SQL");
+            employee.getSkills().add("Hibernate");
+
+            // 2. Set<String> - уникальные языки
+            employee.getLanguages().add("English");
+            employee.getLanguages().add("Spanish");
+            employee.getLanguages().add("English"); // Дубликат - не добавится
+
+            session.save(employee);
+            transaction.commit();
+
+            System.out.println("✅ Employee saved with two auxiliary tables!");
+            System.out.println("Employee ID: " + employee.getId());
+            System.out.println("Skills (List, ordered): " + employee.getSkills());
+            System.out.println("Languages (Set, unique): " + employee.getLanguages());
+        }
+    }
+
 }
