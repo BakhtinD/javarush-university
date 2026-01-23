@@ -58,6 +58,10 @@ public class HibernateUtil {
                 // Регистрируем сущности
                 metadataSources.addAnnotatedClass(User.class);
 
+                metadataSources.addAnnotatedClass(Author.class);
+                metadataSources.addAnnotatedClass(Book.class);
+                metadataSources.addAnnotatedClass(BookDetail.class);
+
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
 
