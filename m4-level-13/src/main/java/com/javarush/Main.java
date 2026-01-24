@@ -27,7 +27,44 @@ public class Main {
 
         demonstrateSlide8();
 
+        demonstrateSlide9();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide9() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // 1. Создаём теги
+            Tag javaTag = new Tag("Java");
+            Tag springTag = new Tag("Spring");
+            Tag hibernateTag = new Tag("Hibernate");
+
+            // 2. Создаём статьи (НЕ сохраняем явно)
+            Article article1 = new Article("Getting Started with Java");
+            Article article2 = new Article("Spring Boot Tutorial");
+
+            // 3. Устанавливаем связи
+            javaTag.getArticles().add(article1);
+            springTag.getArticles().add(article2);
+            hibernateTag.getArticles().add(article1);
+            hibernateTag.getArticles().add(article2);
+
+            // 4. Сохраняем только теги (статьи сохранятся каскадно)
+            session.save(javaTag);
+            session.save(springTag);
+            session.save(hibernateTag);
+
+            tx.commit();
+
+            System.out.println("✅ @ManyToMany Example (Articles & Tags)");
+            System.out.println("Tag 'Java' has articles: " + javaTag.getArticles().size());
+            System.out.println("Tag 'Hibernate' has articles: " + hibernateTag.getArticles().size());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSlide8() {
