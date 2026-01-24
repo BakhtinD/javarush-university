@@ -23,6 +23,8 @@ public class Main {
 
         demonstrateSlide7();
 
+        demonstrateSlide6();
+
         HibernateUtil.shutdown();
     }
 
@@ -119,6 +121,39 @@ public class Main {
             System.out.println("Books by author: " + author.getBooks().size());
             System.out.println("Book '1984' author: " + book1.getAuthor().getName());
             System.out.println("Book ISBN: " + detail.getIsbn());
+        }
+    }
+
+    private static void demonstrateSlide6() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // 1. Создаём категорию
+            Category electronics = new Category("Electronics");
+            session.save(electronics);
+
+            // 2. Создаём продукты с @ManyToOne связью
+            Product laptop = new Product("Laptop");
+            Product phone = new Product("Phone");
+
+            laptop.setCategory(electronics);  // Many-to-One связь
+            phone.setCategory(electronics);   // Многие продукты → одна категория
+
+            session.save(laptop);
+            session.save(phone);
+
+            tx.commit();
+
+            System.out.println("✅ @ManyToOne Example");
+            System.out.println("Category: " + electronics.getName());
+            System.out.println("Products in category:");
+            System.out.println("  - " + laptop.getName());
+            System.out.println("  - " + phone.getName());
+
+            // Проверяем связь
+            Product savedLaptop = session.get(Product.class, laptop.getId());
+            System.out.println("Laptop category: " + savedLaptop.getCategory().getName());
+
         }
     }
 
