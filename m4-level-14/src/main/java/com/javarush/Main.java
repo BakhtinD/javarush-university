@@ -20,6 +20,80 @@ public class Main {
 
         demonstrateSlide6();
 
+        demonstrateSlide7();
+
+    }
+
+    private static void demonstrateSlide7() {
+        System.out.println("=== LazyCollectionOption.EXTRA Demo ===");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        System.out.println("\n1. Creating test data...");
+
+        Article article = new Article();
+        article.setTitle("Java Performance Guide");
+        session.save(article);
+        System.out.println("   - Article created: " + article.getTitle());
+
+        Tag tag1 = new Tag();
+        tag1.setName("Java");
+        tag1.setOrder(0);
+        article.addTag(tag1);
+        session.save(tag1);
+
+        Tag tag2 = new Tag();
+        tag2.setName("Performance");
+        tag2.setOrder(1);
+        article.addTag(tag2);
+        session.save(tag2);
+
+        Tag tag3 = new Tag();
+        tag3.setName("Hibernate");
+        tag3.setOrder(2);
+        article.addTag(tag3);
+        session.save(tag3);
+
+        System.out.println("   - 3 tags created with order");
+
+        tx.commit();
+        session.close();
+
+        System.out.println("\n2. Demonstrating EXTRA lazy loading:");
+
+        session = HibernateUtil.getSessionFactory().openSession();
+
+        System.out.println("\n   Loading Article...");
+        Article loadedArticle = session.get(Article.class, article.getId());
+
+        System.out.println("   Article loaded: " + loadedArticle.getTitle());
+        System.out.println("   Tags initialized? " +
+                Hibernate.isInitialized(loadedArticle.getTags()));
+
+        System.out.println("\n3. Getting collection size (EXTRA feature):");
+        System.out.println("   Tags count: " + loadedArticle.getTags().size());
+        System.out.println("   Tags initialized after size()? " +
+                Hibernate.isInitialized(loadedArticle.getTags()));
+
+        System.out.println("\n4. Getting specific tag (with @OrderColumn):");
+        System.out.println("   Getting tag at index 1...");
+        Tag secondTag = loadedArticle.getTags().get(1);
+        System.out.println("   Second tag: " + secondTag.getName());
+        System.out.println("   Tags initialized after get(1)? " +
+                Hibernate.isInitialized(loadedArticle.getTags()));
+
+        System.out.println("\n5. Iterating through all tags:");
+        System.out.println("   All tags:");
+        loadedArticle.getTags().forEach(t ->
+                System.out.println("   - " + t.getName())
+        );
+        System.out.println("   Tags initialized after iteration? " +
+                Hibernate.isInitialized(loadedArticle.getTags()));
+
+        session.close();
+
+        System.out.println("\n=== END ===");
     }
 
     private static void demonstrateSlide6() {
