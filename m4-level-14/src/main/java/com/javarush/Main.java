@@ -7,6 +7,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public class Main {
@@ -27,6 +28,86 @@ public class Main {
 
         demonstrateSlide9();
 
+        demonstrateSlide10();
+
+    }
+
+    private static void demonstrateSlide10() {
+        System.out.println("=== JOIN FETCH Limitations Demo ===");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        System.out.println("\n1. Creating test data...");
+
+        // Create students
+        Student student1 = new Student();
+        student1.setName("Alice Brown");
+        session.save(student1);
+
+        Student student2 = new Student();
+        student2.setName("Bob Wilson");
+        session.save(student2);
+
+        System.out.println("   - 2 students created");
+
+        // Create grades
+        for (int i = 1; i <= 6; i++) {
+            Grade grade = new Grade();
+            grade.setSubject("Math");
+            grade.setScore(70 + i * 3);
+            grade.setDate(LocalDate.now().minusDays(i));
+            grade.setStudent(i % 2 == 0 ? student2 : student1);
+            session.save(grade);
+        }
+
+        System.out.println("   - 6 grades created");
+
+        tx.commit();
+        session.close();
+
+        System.out.println("\n2. PROBLEM: JOIN FETCH with pagination");
+
+        session = HibernateUtil.getSessionFactory().openSession();
+
+        // Problematic query: JOIN FETCH with pagination
+        String hql = "SELECT DISTINCT g FROM Grade g " +
+                "LEFT JOIN FETCH g.student " +
+                "ORDER BY g.date DESC";
+
+        Query<Grade> query = session.createQuery(hql, Grade.class);
+        query.setFirstResult(0);
+        query.setMaxResults(3); // Want only 3 latest grades
+
+        System.out.println("\n   Query: get 3 latest grades with students");
+        System.out.println("   Check SQL logs - warning expected!");
+
+        List<Grade> grades = query.list();
+
+        System.out.println("\n   Result: " + grades.size() + " grades returned");
+        grades.forEach(g ->
+                System.out.println("   - Grade: " + g.getScore() +
+                        " in " + g.getSubject() +
+                        ", Student: " + g.getStudent().getName() +
+                        ", Date: " + g.getDate())
+        );
+
+        session.close();
+
+        System.out.println("\n3. SQL executed (see logs):");
+        System.out.println("   SELECT g.*, s.* FROM grade g");
+        System.out.println("   LEFT JOIN student s ON g.student_id = s.id");
+        System.out.println("   ORDER BY g.date DESC");
+        System.out.println("   -- NO LIMIT 3 in SQL!");
+
+        System.out.println("\n   Hibernate loaded ALL 6 grades,");
+        System.out.println("   then selected first 3 in memory.");
+
+        System.out.println("\n=== KEY POINT ===");
+        System.out.println("JOIN FETCH + pagination = BAD");
+        System.out.println("All data loaded → memory waste");
+
+        System.out.println("\n=== END ===");
     }
 
     private static void demonstrateSlide9() {
