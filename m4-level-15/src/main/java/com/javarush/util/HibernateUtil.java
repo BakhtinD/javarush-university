@@ -1,5 +1,7 @@
 package com.javarush.util;
 
+import com.javarush.entity.Product;
+import com.javarush.entity.User;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
@@ -44,15 +46,6 @@ public class HibernateUtil {
                 settings.put("hibernate.format_sql", "true");
                 settings.put("hibernate.use_sql_comments", "true");
 
-                // Включение кэша второго уровня
-                settings.put("hibernate.cache.use_second_level_cache", "true");
-                settings.put("hibernate.cache.use_query_cache", "true");
-                settings.put("hibernate.cache.region.factory_class",
-                        "org.hibernate.cache.ehcache.EhCacheRegionFactory");
-
-                // Включить статистику для мониторинга
-                settings.put("hibernate.generate_statistics", "true");
-
                 // Transaction settings
                 settings.put("hibernate.connection.autocommit", "false");
                 settings.put("hibernate.transaction.coordinator_class", "jdbc");
@@ -64,7 +57,8 @@ public class HibernateUtil {
                 MetadataSources metadataSources = new MetadataSources(serviceRegistry);
 
                 // Регистрируем сущности
-                // metadataSources.addAnnotatedClass(User.class);
+                metadataSources.addAnnotatedClass(User.class);
+                metadataSources.addAnnotatedClass(Product.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
