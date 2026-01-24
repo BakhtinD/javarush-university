@@ -2,6 +2,10 @@ package com.javarush;
 
 import com.javarush.entity.Product;
 import com.javarush.entity.User;
+import com.javarush.entity.discriminator.Contract;
+import com.javarush.entity.discriminator.Document;
+import com.javarush.entity.discriminator.Invoice;
+import com.javarush.entity.discriminator.Report;
 import com.javarush.entity.singletable.Admin;
 import com.javarush.entity.singletable.Employee;
 import com.javarush.entity.singletable.Person;
@@ -10,6 +14,7 @@ import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class Main {
@@ -18,8 +23,156 @@ public class Main {
 
         demonstrateSingleTableInheritance();
 
+        demonstrateDiscriminator();
+
         HibernateUtil.shutdown();
 
+    }
+
+    private static void demonstrateDiscriminator() {
+        System.out.println("=== Демонстрация дискриминаторов (разные типы) ===");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очищаем таблицу documents
+            session.createQuery("DELETE FROM Document").executeUpdate();
+
+            System.out.println("\n1. Создаем документы разных типов со строковым дискриминатором:");
+
+            // Счет
+            Invoice invoice = new Invoice();
+            invoice.setTitle("Bill for services");
+            invoice.setAuthor("Accounting");
+            invoice.setCreatedDate(java.time.LocalDate.now());
+            invoice.setFileSize(2048L);
+            invoice.setInvoiceNumber("INV-2024-001");
+            invoice.setTotalAmount(new BigDecimal("15000.00"));
+            invoice.setClientName("LLC \"Chamomile\"");
+            invoice.setDueDate(java.time.LocalDate.now().plusDays(30));
+
+            // Договор
+            Contract contract = new Contract();
+            contract.setTitle("Lease agreement");
+            contract.setAuthor("Legal Department");
+            contract.setCreatedDate(java.time.LocalDate.now());
+            contract.setFileSize(5120L);
+            contract.setPartyA("LLC \"Lessor\"");
+            contract.setPartyB("IP Ivanov I.I.");
+            contract.setValidFrom(java.time.LocalDate.now());
+            contract.setValidTo(java.time.LocalDate.now().plusYears(1));
+            contract.setSignatureDate(java.time.LocalDate.now());
+
+            // Отчет
+            Report report = new Report();
+            report.setTitle("Financial report for the 1st quarter of 2024");
+            report.setAuthor("Finance Department");
+            report.setCreatedDate(java.time.LocalDate.now());
+            report.setFileSize(10240L);
+            report.setPeriod("2024-Q1");
+            report.setPagesCount(25);
+            report.setHasCharts(true);
+            report.setApprovedBy("Director");
+
+            session.save(invoice);
+            session.save(contract);
+            session.save(report);
+
+            transaction.commit();
+            System.out.println("✅ Документы сохранены в таблицу 'documents'");
+
+            // Показываем структуру таблицы
+            System.out.println("\n2. Структура таблицы 'documents':");
+            System.out.println("   Дискриминаторная колонка: doc_type (VARCHAR)");
+            System.out.println("   Значения: INVOICE, CONTRACT, REPORT");
+
+            // Запрос всех документов
+            System.out.println("\n3. Запрос всех документов:");
+            List<Document> allDocuments = session.createQuery(
+                            "FROM Document ORDER BY createdDate", Document.class)
+                    .list();
+
+            for (Document doc : allDocuments) {
+                String discriminatorValue = "";
+                if (doc instanceof Invoice) discriminatorValue = "INVOICE";
+                else if (doc instanceof Contract) discriminatorValue = "CONTRACT";
+                else if (doc instanceof Report) discriminatorValue = "REPORT";
+
+                System.out.printf("   [%s] %s (%s, %d байт)%n",
+                        discriminatorValue,
+                        doc.getTitle(),
+                        doc.getAuthor(),
+                        doc.getFileSize());
+            }
+
+            // Запрос только определенного типа
+            System.out.println("\n4. Запрос только счетов (INVOICE):");
+            List<Invoice> invoices = session.createQuery(
+                            "FROM Invoice", Invoice.class)
+                    .list();
+
+            for (Invoice inv : invoices) {
+                System.out.printf("   Счет №%s: %,.2f руб. для %s%n",
+                        inv.getInvoiceNumber(),
+                        inv.getTotalAmount(),
+                        inv.getClientName());
+            }
+
+            // Демонстрация разных типов дискриминаторов
+            System.out.println("\n5. Примеры разных типов дискриминаторов:");
+            System.out.println("   а) STRING (по умолчанию):");
+            System.out.println("      @DiscriminatorColumn(name=\"type\", discriminatorType = DiscriminatorType.STRING)");
+            System.out.println("      @DiscriminatorValue(\"INVOICE\")");
+
+            System.out.println("\n   б) INTEGER:");
+            System.out.println("      @DiscriminatorColumn(name=\"type_code\", discriminatorType = DiscriminatorType.INTEGER)");
+            System.out.println("      @DiscriminatorValue(\"1\") // для Invoice");
+            System.out.println("      @DiscriminatorValue(\"2\") // для Contract");
+
+            System.out.println("\n   в) CHAR:");
+            System.out.println("      @DiscriminatorColumn(name=\"type_char\", discriminatorType = DiscriminatorType.CHAR, length = 1)");
+            System.out.println("      @DiscriminatorValue(\"I\") // для Invoice");
+            System.out.println("      @DiscriminatorValue(\"C\") // для Contract");
+
+            // Демонстрация с числовыми значениями
+            System.out.println("\n6. Преимущества числового дискриминатора:");
+            System.out.println("   - Экономия места (INT vs VARCHAR)");
+            System.out.println("   - Более быстрые сравнения");
+            System.out.println("   - Меньше вероятность ошибок при вводе");
+
+            System.out.println("\n7. Преимущества строкового дискриминатора:");
+            System.out.println("   - Человекочитаемые значения");
+            System.out.println("   - Легче отлаживать в SQL");
+            System.out.println("   - Не требует конвертации");
+
+            // Показываем SQL-запрос
+            System.out.println("\n8. Как выглядит SQL-запрос:");
+            System.out.println("   SELECT id, title, author, doc_type, ... FROM documents");
+            System.out.println("   WHERE doc_type IN ('INVOICE', 'CONTRACT', 'REPORT')");
+
+            // Динамическое определение типа
+            System.out.println("\n9. Определение типа во время выполнения:");
+            Document firstDoc = session.createQuery(
+                            "FROM Document ORDER BY id", Document.class)
+                    .setMaxResults(1)
+                    .uniqueResult();
+
+            if (firstDoc != null) {
+                String type = firstDoc.getClass().getSimpleName();
+                System.out.printf("   Первый документ: %s (тип: %s)%n",
+                        firstDoc.getTitle(), type);
+
+                // Пример использования instanceof с дискриминатором
+                if (firstDoc instanceof Invoice) {
+                    System.out.println("   Это счет, можно получить invoiceNumber");
+                } else if (firstDoc instanceof Contract) {
+                    System.out.println("   Это договор, можно получить partyA");
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSingleTableInheritance() {

@@ -2,6 +2,10 @@ package com.javarush.util;
 
 import com.javarush.entity.Product;
 import com.javarush.entity.User;
+import com.javarush.entity.discriminator.Contract;
+import com.javarush.entity.discriminator.Document;
+import com.javarush.entity.discriminator.Invoice;
+import com.javarush.entity.discriminator.Report;
 import com.javarush.entity.singletable.Admin;
 import com.javarush.entity.singletable.Employee;
 import com.javarush.entity.singletable.Person;
@@ -68,6 +72,12 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(RegularUser.class);
                 metadataSources.addAnnotatedClass(Employee.class);
                 metadataSources.addAnnotatedClass(Admin.class);
+
+                metadataSources.addAnnotatedClass(Contract.class);
+                metadataSources.addAnnotatedClass(Document.class);
+                metadataSources.addAnnotatedClass(Invoice.class);
+                metadataSources.addAnnotatedClass(Report.class);
+
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
