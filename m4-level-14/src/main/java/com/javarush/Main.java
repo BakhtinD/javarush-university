@@ -5,6 +5,7 @@ import com.javarush.util.HibernateUtil;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
 import java.util.List;
 
@@ -24,6 +25,102 @@ public class Main {
 
         demonstrateSlide8();
 
+        demonstrateSlide9();
+
+    }
+
+    private static void demonstrateSlide9() {
+        System.out.println("=== JOIN FETCH Demo ===");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        System.out.println("\n1. Creating test data...");
+
+        Project project = new Project();
+        project.setName("Website Redesign");
+        session.save(project);
+        System.out.println("   - Project created: " + project.getName());
+
+        Task task1 = new Task();
+        task1.setDescription("Design homepage");
+        task1.setCompleted(true);
+        task1.setProject(project);
+        session.save(task1);
+
+        Task task2 = new Task();
+        task2.setDescription("Implement backend");
+        task2.setCompleted(false);
+        task2.setProject(project);
+        session.save(task2);
+
+        Task task3 = new Task();
+        task3.setDescription("Write tests");
+        task3.setCompleted(false);
+        task3.setProject(project);
+        session.save(task3);
+
+        System.out.println("   - 3 tasks created for project");
+
+        tx.commit();
+        session.close();
+
+        System.out.println("\n2. PROBLEM: N+1 without JOIN FETCH:");
+        System.out.println("   (Check SQL logs - will show 4 queries)");
+
+        session = HibernateUtil.getSessionFactory().openSession();
+
+        // Bad approach: causes N+1
+        Project badProject = session.get(Project.class, project.getId());
+        System.out.println("\n   Project: " + badProject.getName());
+
+        System.out.println("   Iterating tasks (N+1)...");
+        for (Task task : badProject.getTasks()) {
+            System.out.println("   - Task: " + task.getDescription() +
+                    " (completed: " + task.isCompleted() + ")");
+        }
+
+        session.close();
+
+        System.out.println("\n3. SOLUTION: Using JOIN FETCH:");
+        System.out.println("   (Check SQL logs - will show only 1 query)");
+
+        session = HibernateUtil.getSessionFactory().openSession();
+
+        // Good approach: JOIN FETCH
+        String hql = "SELECT DISTINCT p FROM Project p " +
+                "LEFT JOIN FETCH p.tasks t " +
+                "WHERE p.id = :projectId";
+
+        Query<Project> query = session.createQuery(hql, Project.class);
+        query.setParameter("projectId", project.getId());
+
+        Project goodProject = query.uniqueResult();
+        System.out.println("\n   Project with JOIN FETCH: " + goodProject.getName());
+
+        System.out.println("   Tasks initialized? " +
+                Hibernate.isInitialized(goodProject.getTasks()));
+
+        System.out.println("   Iterating tasks (single query)...");
+        for (Task task : goodProject.getTasks()) {
+            System.out.println("   - Task: " + task.getDescription() +
+                    " (completed: " + task.isCompleted() + ")");
+        }
+
+        session.close();
+
+        System.out.println("\n=== KEY DIFFERENCES ===");
+        System.out.println("Without JOIN FETCH:");
+        System.out.println("  • 1 query for project");
+        System.out.println("  • +1 query for each task (N+1 problem)");
+        System.out.println("  • Total: 4 queries for 3 tasks");
+
+        System.out.println("\nWith JOIN FETCH:");
+        System.out.println("  • 1 query with JOIN");
+        System.out.println("  • All data loaded at once");
+        System.out.println("  • Total: 1 query only");
+
+        System.out.println("\n=== END ===");
     }
 
     private static void demonstrateSlide8() {
