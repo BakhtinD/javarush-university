@@ -1,12 +1,15 @@
 package com.javarush;
 
 import com.javarush.entity.*;
+import com.javarush.entity.cache.Booking;
+import com.javarush.entity.cache.City;
+import com.javarush.entity.cache.Hotel;
 import com.javarush.util.HibernateUtil;
-import org.hibernate.Hibernate;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
+import org.hibernate.*;
 import org.hibernate.query.Query;
+import org.hibernate.stat.Statistics;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -30,6 +33,165 @@ public class Main {
 
         demonstrateSlide10();
 
+        System.out.println("Starting...");
+        // При кэшировании приложение не завершается
+        // demonstrateCachingSlides13to22();
+        System.out.println("Finished!");
+
+    }
+
+    private static void demonstrateCachingSlides13to22() {
+        System.out.println("=== COMPLETE CACHING EXAMPLE (Slides 13-22) ===");
+
+        // 1. Настройка кэша второго уровня (Slide 13-14)
+        System.out.println("\n1. SECOND LEVEL CACHE CONFIGURATION:");
+        System.out.println("   City: @Cache(usage = CacheConcurrencyStrategy.READ_ONLY)");
+        System.out.println("   Hotel: @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)");
+        System.out.println("   Booking: @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        // Создаем тестовые данные
+        System.out.println("\n2. CREATING TEST DATA:");
+
+        City city = new City();
+        city.setName("New York");
+        city.setCountryCode("US");
+        session.save(city);
+        System.out.println("   - City created: " + city.getName());
+
+        Hotel hotel = new Hotel();
+        hotel.setName("Grand Plaza");
+        hotel.setPricePerNight(new BigDecimal("199.99"));
+        hotel.setRating(5);
+        hotel.setCity(city);
+        session.save(hotel);
+        System.out.println("   - Hotel created: " + hotel.getName());
+
+        Booking booking = new Booking();
+        booking.setGuestName("John Doe");
+        booking.setCheckInDate(LocalDate.now().plusDays(1));
+        booking.setCheckOutDate(LocalDate.now().plusDays(3));
+        booking.setHotel(hotel);
+        session.save(booking);
+        System.out.println("   - Booking created for: " + booking.getGuestName());
+
+        tx.commit();
+        session.close();
+
+        // 3. Демонстрация кэша второго уровня (Slide 15)
+        System.out.println("\n3. DEMONSTRATING SECOND LEVEL CACHE:");
+
+        Session session1 = HibernateUtil.getSessionFactory().openSession();
+        System.out.println("   Session 1: Loading Hotel (will query database)");
+        Hotel hotel1 = session1.get(Hotel.class, hotel.getId());
+        System.out.println("   Hotel loaded: " + hotel1.getName());
+        session1.close();
+
+        Session session2 = HibernateUtil.getSessionFactory().openSession();
+        System.out.println("   Session 2: Loading same Hotel (from L2 cache)");
+        Hotel hotel2 = session2.get(Hotel.class, hotel.getId());
+        System.out.println("   Hotel loaded: " + hotel2.getName() + " (NO SQL query!)");
+        session2.close();
+
+        // 4. CacheMode демонстрация (Slide 16)
+        System.out.println("\n4. CACHE MODES DEMONSTRATION:");
+
+        Session session3 = HibernateUtil.getSessionFactory().openSession();
+        session3.setCacheMode(CacheMode.IGNORE); // Не использовать кэш
+        System.out.println("   Session 3 with CacheMode.IGNORE:");
+        Hotel hotel3 = session3.get(Hotel.class, hotel.getId());
+        System.out.println("   Hotel loaded (forced from DB): " + hotel3.getName());
+        session3.close();
+
+        Session session4 = HibernateUtil.getSessionFactory().openSession();
+        session4.setCacheMode(CacheMode.GET); // Только читать из кэша
+        System.out.println("\n   Session 4 with CacheMode.GET:");
+        Hotel hotel4 = session4.get(Hotel.class, hotel.getId());
+        System.out.println("   Hotel from cache: " + hotel4.getName());
+        session4.close();
+
+        // 5. Кэш запросов (Slide 17)
+        System.out.println("\n5. QUERY CACHE DEMONSTRATION:");
+
+        Session session5 = HibernateUtil.getSessionFactory().openSession();
+
+        // Первый запрос - из базы
+        String hql1 = "FROM Hotel h WHERE h.rating = :rating";
+        Query<Hotel> query1 = session5.createQuery(hql1, Hotel.class);
+        query1.setParameter("rating", 5);
+        query1.setCacheable(true); // Включаем кэширование запроса
+        List<Hotel> hotels1 = query1.list();
+        System.out.println("   First query (database): found " + hotels1.size() + " hotels");
+
+        // Тот же запрос - из кэша запросов
+        Query<Hotel> query2 = session5.createQuery(hql1, Hotel.class);
+        query2.setParameter("rating", 5);
+        query2.setCacheable(true);
+        List<Hotel> hotels2 = query2.list();
+        System.out.println("   Same query (query cache): found " + hotels2.size() + " hotels");
+
+        session5.close();
+
+        // 6. Ручная очистка кэша (Slide 18-19)
+        System.out.println("\n6. MANUAL CACHE EVICTION:");
+
+        SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+
+        System.out.println("   Before eviction: Hotel is in L2 cache");
+        System.out.println("   Evicting Hotel from L2 cache...");
+
+        // Получаем регион кэша для Hotel
+        sessionFactory.getCache().evictEntityData(Hotel.class, hotel.getId());
+
+        Session session6 = HibernateUtil.getSessionFactory().openSession();
+        System.out.println("   Loading Hotel after eviction (will query database):");
+        Hotel hotel6 = session6.get(Hotel.class, hotel.getId());
+        System.out.println("   Hotel loaded: " + hotel6.getName());
+        session6.close();
+
+        // 7. Очистка всего региона
+        System.out.println("\n   Evicting entire Hotel region...");
+        sessionFactory.getCache().evictEntityData(Hotel.class);
+
+        // 8. Статистика (Slide 21)
+        System.out.println("\n7. CACHE STATISTICS:");
+        Statistics stats = sessionFactory.getStatistics();
+
+        System.out.println("   Second Level Cache Statistics:");
+        System.out.println("   - Entity puts: " + stats.getSecondLevelCachePutCount());
+        System.out.println("   - Entity hits: " + stats.getSecondLevelCacheHitCount());
+        System.out.println("   - Entity misses: " + stats.getSecondLevelCacheMissCount());
+
+        System.out.println("\n   Query Cache Statistics:");
+        System.out.println("   - Query puts: " + stats.getQueryCachePutCount());
+        System.out.println("   - Query hits: " + stats.getQueryCacheHitCount());
+
+        // 9. Провайдеры кэша (Slide 20, 22)
+        System.out.println("\n8. CACHE PROVIDERS (configuration example):");
+        System.out.println("   In hibernate.cfg.xml:");
+        System.out.println("   <property name=\"hibernate.cache.use_second_level_cache\">true</property>");
+        System.out.println("   <property name=\"hibernate.cache.use_query_cache\">true</property>");
+        System.out.println("   <property name=\"hibernate.cache.region.factory_class\">");
+        System.out.println("     org.hibernate.cache.ehcache.EhCacheRegionFactory");
+        System.out.println("   </property>");
+
+        System.out.println("\n   In pom.xml:");
+        System.out.println("   <dependency>");
+        System.out.println("     <groupId>org.hibernate</groupId>");
+        System.out.println("     <artifactId>hibernate-ehcache</artifactId>");
+        System.out.println("     <version>5.6.15.Final</version>");
+        System.out.println("   </dependency>");
+
+        System.out.println("\n=== SUMMARY ===");
+        System.out.println("1. @Cache annotation defines caching strategy");
+        System.out.println("2. CacheMode controls cache behavior per session");
+        System.out.println("3. Query cache stores query results");
+        System.out.println("4. Manual eviction for cache control");
+        System.out.println("5. Statistics for monitoring cache effectiveness");
+
+        System.out.println("\n=== END OF CACHING DEMO ===");
     }
 
     private static void demonstrateSlide10() {

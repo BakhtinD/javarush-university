@@ -45,6 +45,15 @@ public class HibernateUtil {
                 settings.put("hibernate.format_sql", "true");
                 settings.put("hibernate.use_sql_comments", "true");
 
+                // Включение кэша второго уровня
+                settings.put("hibernate.cache.use_second_level_cache", "true");
+                settings.put("hibernate.cache.use_query_cache", "true");
+                settings.put("hibernate.cache.region.factory_class",
+                        "org.hibernate.cache.ehcache.EhCacheRegionFactory");
+
+                // Включить статистику для мониторинга
+                settings.put("hibernate.generate_statistics", "true");
+
                 // Transaction settings
                 settings.put("hibernate.connection.autocommit", "false");
                 settings.put("hibernate.transaction.coordinator_class", "jdbc");
@@ -80,6 +89,10 @@ public class HibernateUtil {
 
                 metadataSources.addAnnotatedClass(Student.class);
                 metadataSources.addAnnotatedClass(Grade.class);
+
+                metadataSources.addAnnotatedClass(com.javarush.entity.cache.City.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.cache.Hotel.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.cache.Booking.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
