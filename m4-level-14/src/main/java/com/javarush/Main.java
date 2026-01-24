@@ -22,6 +22,80 @@ public class Main {
 
         demonstrateSlide7();
 
+        demonstrateSlide8();
+
+    }
+
+    private static void demonstrateSlide8() {
+        System.out.println("=== N+1 Problem Demo ===");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        System.out.println("\n1. Creating test data...");
+
+        Customer customer = new Customer();
+        customer.setName("John Smith");
+        session.save(customer);
+        System.out.println("   - Customer created: " + customer.getName());
+
+        // Create 3 orders (in real life could be 1000+)
+        Order order1 = new Order();
+        order1.setProduct("Laptop");
+        order1.setAmount(999.99);
+        order1.setCustomer(customer);
+        session.save(order1);
+
+        Order order2 = new Order();
+        order2.setProduct("Phone");
+        order2.setAmount(499.99);
+        order2.setCustomer(customer);
+        session.save(order2);
+
+        Order order3 = new Order();
+        order3.setProduct("Tablet");
+        order3.setAmount(299.99);
+        order3.setCustomer(customer);
+        session.save(order3);
+
+        System.out.println("   - 3 orders created for customer");
+
+        tx.commit();
+        session.close();
+
+        System.out.println("\n2. Demonstrating N+1 problem:");
+        System.out.println("   (Check SQL logs in console)");
+
+        session = HibernateUtil.getSessionFactory().openSession();
+
+        System.out.println("\n   Loading customer...");
+        Customer loadedCustomer = session.get(Customer.class, customer.getId());
+
+        System.out.println("   Customer: " + loadedCustomer.getName());
+        System.out.println("   Orders initialized? " +
+                Hibernate.isInitialized(loadedCustomer.getOrders()));
+
+        System.out.println("\n3. Iterating through orders (N+1 happens here):");
+        System.out.println("   Customer orders:");
+
+        // N+1 PROBLEM: 1 query for customer + 3 queries for orders = 4 queries total
+        for (Order order : loadedCustomer.getOrders()) {
+            System.out.println("   - Product: " + order.getProduct() +
+                    ", Amount: $" + order.getAmount());
+        }
+
+        session.close();
+
+        System.out.println("\n=== PROBLEM SUMMARY ===");
+        System.out.println("Executed queries:");
+        System.out.println("1. SELECT customer WHERE id = ?");
+        System.out.println("2. SELECT order WHERE customer_id = ? AND id = ?");
+        System.out.println("3. SELECT order WHERE customer_id = ? AND id = ?");
+        System.out.println("4. SELECT order WHERE customer_id = ? AND id = ?");
+        System.out.println("\nTotal: 4 queries for 3 orders (N+1 = 3+1)");
+        System.out.println("Optimal: 1 query with JOIN or WHERE IN");
+
+        System.out.println("\n=== NEXT SLIDE SOLUTION: JOIN FETCH ===");
     }
 
     private static void demonstrateSlide7() {
