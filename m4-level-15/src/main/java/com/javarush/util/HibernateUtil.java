@@ -88,6 +88,11 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(com.javarush.entity.primarykey.WholesaleOrder.class);
                 metadataSources.addAnnotatedClass(com.javarush.entity.primarykey.StoreOrder.class);
 
+                metadataSources.addAnnotatedClass(com.javarush.entity.tableperclass.MediaItem.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.tableperclass.Movie.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.tableperclass.Book.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.tableperclass.MusicAlbum.class);
+
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
 

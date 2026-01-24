@@ -18,6 +18,10 @@ import com.javarush.entity.singletable.Admin;
 import com.javarush.entity.singletable.Employee;
 import com.javarush.entity.singletable.Person;
 import com.javarush.entity.singletable.RegularUser;
+import com.javarush.entity.tableperclass.Book;
+import com.javarush.entity.tableperclass.MediaItem;
+import com.javarush.entity.tableperclass.Movie;
+import com.javarush.entity.tableperclass.MusicAlbum;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -38,8 +42,220 @@ public class Main {
 
         demonstratePrimaryKeyJoinColumn();
 
+        demonstrateTablePerClass();
+
         HibernateUtil.shutdown();
 
+    }
+
+    private static void demonstrateTablePerClass() {
+        System.out.println("=== Демонстрация Table per Class Inheritance ===");
+        System.out.println("(Отдельная таблица для каждого класса)\n");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очищаем все таблицы
+            session.createQuery("DELETE FROM MusicAlbum").executeUpdate();
+            session.createQuery("DELETE FROM Book").executeUpdate();
+            session.createQuery("DELETE FROM Movie").executeUpdate();
+            session.createQuery("DELETE FROM MediaItem").executeUpdate();
+
+            System.out.println("1. Создаем медиа-контент разных типов:");
+
+            // Фильм
+            Movie movie = new Movie();
+            movie.setTitle("Kin-Dza-Dza");
+            movie.setCreator("Ivan");
+            movie.setReleaseDate(LocalDate.of(2014, 11, 7));
+            movie.setGenre("Horror");
+            movie.setRating(8.6);
+            movie.setDescription("Best!");
+            movie.setDurationMinutes(169);
+            movie.setDirector("Nolan");
+            movie.setMainActors("John");
+            movie.setBudget(165000000L);
+            movie.setBoxOffice(701000000L);
+            movie.setImdbId("tt0816692");
+
+            // Книга
+            Book book = new Book();
+            book.setTitle("1984");
+            book.setCreator("Author");
+            book.setReleaseDate(LocalDate.of(1949, 6, 8));
+            book.setGenre("Fant");
+            book.setRating(4.2);
+            book.setDescription("Story");
+            book.setAuthor("Creator");
+            book.setIsbn("978-5-17-090640-2");
+            book.setPageCount(320);
+            book.setPublisher("BBS");
+            book.setEdition(5);
+            book.setHasIllustrations(false);
+
+            // Музыкальный альбом
+            MusicAlbum album = new MusicAlbum();
+            album.setTitle("The Dark Side of the Moon");
+            album.setCreator("Pink Floyd");
+            album.setReleaseDate(LocalDate.of(1973, 3, 1));
+            album.setGenre("Rock");
+            album.setRating(4.8);
+            album.setDescription("Desc");
+            album.setArtist("Pink Floyd");
+            album.setRecordLabel("Harvest Records");
+            album.setTrackCount(10);
+            album.setDurationSeconds(2580);
+            album.setAlbumType("STUDIO");
+            album.setFormat("VINYL");
+            album.setUpcCode("074643169927");
+
+            // Еще один фильм для демонстрации
+            Movie movie2 = new Movie();
+            movie2.setTitle("Begin");
+            movie2.setCreator("Nolan");
+            movie2.setReleaseDate(LocalDate.of(2010, 7, 16));
+            movie2.setGenre("Fant");
+            movie2.setRating(8.8);
+            movie2.setDescription("Desc");
+            movie2.setDurationMinutes(148);
+            movie2.setDirector("Desc");
+            movie2.setMainActors("Act");
+            movie2.setBudget(160000000L);
+            movie2.setHasOscars(true);
+
+            // Сохраняем (каждый в свою таблицу)
+            session.save(movie);
+            session.save(book);
+            session.save(album);
+            session.save(movie2);
+
+            transaction.commit();
+            System.out.println("✅ 4 медиа-объекта сохранены в 4 таблицы:");
+            System.out.println("   - media_items (родительский абстрактный класс!)");
+            System.out.println("   - movies");
+            System.out.println("   - books");
+            System.out.println("   - music_albums");
+
+            // Показываем структуру таблиц
+            System.out.println("\n2. Структура таблиц в БД:");
+            System.out.println("   Каждая таблица содержит ВСЕ поля своего класса:");
+
+            System.out.println("\n   Таблица movies:");
+            System.out.println("     id, title, creator, release_date, genre, rating, description, created_at,");
+            System.out.println("     duration_minutes, director, main_actors, budget, box_office, has_oscars, imdb_id");
+
+            System.out.println("\n   Таблица books:");
+            System.out.println("     id, title, creator, release_date, genre, rating, description, created_at,");
+            System.out.println("     author, isbn, page_count, publisher, edition, translator, has_illustrations");
+
+            System.out.println("\n   Таблица music_albums:");
+            System.out.println("     id, title, creator, release_date, genre, rating, description, created_at,");
+            System.out.println("     artist, record_label, track_count, duration_seconds, album_type, format, upc_code");
+
+            // Демонстрация полиморфного запроса
+            System.out.println("\n3. Полиморфный запрос ко всей иерархии:");
+            List<MediaItem> allMedia = session.createQuery(
+                            "FROM MediaItem ORDER BY rating DESC", MediaItem.class)
+                    .list();
+
+            System.out.println("Всего медиа-объектов: " + allMedia.size());
+            for (MediaItem item : allMedia) {
+                System.out.printf("   ★%.1f | %s (%s) - %s%n",
+                        item.getRating(),
+                        item.getTitle(),
+                        item.getClass().getSimpleName(),
+                        item.getGenre());
+            }
+
+            // Запрос только фильмов
+            System.out.println("\n4. Запрос только фильмов:");
+            List<Movie> movies = session.createQuery(
+                            "FROM Movie WHERE durationMinutes > 150", Movie.class)
+                    .list();
+
+            for (Movie m : movies) {
+                System.out.printf("   %s: %d мин., реж. %s%n",
+                        m.getTitle(), m.getDurationMinutes(), m.getDirector());
+            }
+
+            // Показываем SQL, который генерирует Hibernate
+            System.out.println("\n5. SQL-запрос для 'FROM MediaItem':");
+            System.out.println("   SELECT id, title, creator, release_date, genre, rating, ...");
+            System.out.println("   FROM media_items"); // Абстрактная таблица!
+            System.out.println("   UNION ALL");
+            System.out.println("   SELECT id, title, creator, release_date, genre, rating, ...");
+            System.out.println("   FROM movies");
+            System.out.println("   UNION ALL");
+            System.out.println("   SELECT id, title, creator, release_date, genre, rating, ...");
+            System.out.println("   FROM books");
+            System.out.println("   UNION ALL");
+            System.out.println("   SELECT id, title, creator, release_date, genre, rating, ...");
+            System.out.println("   FROM music_albums");
+            System.out.println("   ORDER BY rating DESC");
+
+            // Сквозной идентификатор
+            System.out.println("\n6. Сквозной (глобальный) идентификатор:");
+            System.out.println("   ID уникальны во всех таблицах!");
+            System.out.println("   Не может быть двух записей с ID=1:");
+            System.out.println("   - movies.id=1 ✓");
+            System.out.println("   - books.id=1 ✗ (будет 2 или больше)");
+            System.out.println("   - music_albums.id=1 ✗ (будет 3 или больше)");
+
+            // Показываем реальные ID
+            System.out.println("\n7. Фактические ID в БД:");
+            System.out.println("   Movie 'Интерстеллар': ID = " + movie.getId());
+            System.out.println("   Book '1984': ID = " + book.getId());
+            System.out.println("   Album 'The Dark Side...': ID = " + album.getId());
+            System.out.println("   Movie 'Начало': ID = " + movie2.getId());
+
+            // Преимущества и недостатки
+            System.out.println("\n8. Преимущества Table per Class:");
+            System.out.println("   ✅ Простая структура БД (понятная денормализация)");
+            System.out.println("   ✅ Быстрые запросы к конкретным типам (без JOIN)");
+            System.out.println("   ✅ Можно использовать NOT NULL для всех полей");
+            System.out.println("   ✅ Легко добавлять новые подклассы");
+            System.out.println("   ✅ Нет проблем с миграцией legacy данных");
+
+            System.out.println("\n9. Недостатки Table per Class:");
+            System.out.println("   ❌ Медленные полиморфные запросы (UNION ALL)");
+            System.out.println("   ❌ Дублирование общих полей во всех таблицах");
+            System.out.println("   ❌ Сложнее изменять общие поля (нужно во всех таблицах)");
+            System.out.println("   ❌ Больше места в БД из-за дублирования");
+
+            // Сравнение с другими стратегиями
+            System.out.println("\n10. Сравнение с другими стратегиями:");
+            System.out.println("   vs Single Table:");
+            System.out.println("     + Нет NULL значений");
+            System.out.println("     - Дублирование данных");
+
+            System.out.println("\n   vs Joined Table:");
+            System.out.println("     + Быстрее запросы к конкретным типам");
+            System.out.println("     - Медленнее полиморфные запросы");
+
+            System.out.println("\n   vs MappedSuperclass:");
+            System.out.println("     + Есть полиморфные запросы");
+            System.out.println("     + Глобальные ID");
+            System.out.println("     - Медленнее");
+
+            // Демонстрация производительности
+            System.out.println("\n11. Когда использовать Table per Class:");
+            System.out.println("   ✓ Когда редко нужны полиморфные запросы");
+            System.out.println("   ✓ Когда часто запрашиваются конкретные типы");
+            System.out.println("   ✓ Когда подклассы сильно отличаются по полям");
+            System.out.println("   ✓ Когда важна простота миграции");
+
+            // Пример сложного запроса
+            System.out.println("\n12. Сложный полиморфный запрос:");
+            System.out.println("   HQL: FROM MediaItem WHERE rating > 4.0 AND releaseDate > '2000-01-01'");
+            System.out.println("\n   Генерируемый SQL (упрощенно):");
+            System.out.println("   (SELECT ... FROM media_items WHERE rating > 4.0 AND release_date > '2000-01-01')");
+            System.out.println("   UNION ALL");
+            System.out.println("   (SELECT ... FROM movies WHERE rating > 4.0 AND release_date > '2000-01-01')");
+            System.out.println("   UNION ALL ...");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstratePrimaryKeyJoinColumn() {
