@@ -78,6 +78,10 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(Invoice.class);
                 metadataSources.addAnnotatedClass(Report.class);
 
+                metadataSources.addAnnotatedClass(com.javarush.entity.joinedtablestrategy.Account.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.joinedtablestrategy.SavingsAccount.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.joinedtablestrategy.CheckingAccount.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.joinedtablestrategy.BusinessAccount.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();

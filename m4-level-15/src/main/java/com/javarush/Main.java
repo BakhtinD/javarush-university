@@ -6,6 +6,10 @@ import com.javarush.entity.discriminator.Contract;
 import com.javarush.entity.discriminator.Document;
 import com.javarush.entity.discriminator.Invoice;
 import com.javarush.entity.discriminator.Report;
+import com.javarush.entity.joinedtablestrategy.Account;
+import com.javarush.entity.joinedtablestrategy.BusinessAccount;
+import com.javarush.entity.joinedtablestrategy.CheckingAccount;
+import com.javarush.entity.joinedtablestrategy.SavingsAccount;
 import com.javarush.entity.singletable.Admin;
 import com.javarush.entity.singletable.Employee;
 import com.javarush.entity.singletable.Person;
@@ -15,6 +19,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public class Main {
@@ -25,8 +30,154 @@ public class Main {
 
         demonstrateDiscriminator();
 
+        demonstrateJoinedTableInheritance();
+
         HibernateUtil.shutdown();
 
+    }
+
+    private static void demonstrateJoinedTableInheritance() {
+        System.out.println("=== Демонстрация Joined Table Inheritance ===");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очищаем таблицы (в обратном порядке из-за foreign keys)
+            session.createQuery("DELETE FROM BusinessAccount").executeUpdate();
+            session.createQuery("DELETE FROM CheckingAccount").executeUpdate();
+            session.createQuery("DELETE FROM SavingsAccount").executeUpdate();
+            session.createQuery("DELETE FROM Account").executeUpdate();
+
+            System.out.println("\n1. Создаем разные типы счетов:");
+
+            // Сберегательный счет
+            SavingsAccount savings = new SavingsAccount();
+            savings.setAccountNumber("SAV-001-2024");
+            savings.setAccountHolder("Ivan");
+            savings.setOpeningDate(LocalDate.now());
+            savings.setBalance(50000.0);
+            savings.setInterestRate(new BigDecimal("4.5"));
+            savings.setMinimumBalance(1000.0);
+            savings.setInterestPaymentFrequency("QUARTERLY");
+            savings.setWithdrawalLimitPerMonth(5);
+
+            // Расчетный счет
+            CheckingAccount checking = new CheckingAccount();
+            checking.setAccountNumber("CHK-002-2024");
+            checking.setAccountHolder("Petr");
+            checking.setOpeningDate(LocalDate.now());
+            checking.setBalance(15000.0);
+            checking.setOverdraftLimit(5000.0);
+            checking.setMonthlyFee(300.0);
+            checking.setTransactionLimitPerDay(20);
+
+            // Бизнес-счет
+            BusinessAccount business = new BusinessAccount();
+            business.setAccountNumber("BUS-003-2024");
+            business.setAccountHolder("'IP'");
+            business.setOpeningDate(LocalDate.now());
+            business.setBalance(250000.0);
+            business.setCompanyName("'IP'");
+            business.setTaxIdNumber("7701234567");
+            business.setBusinessType("LLC");
+            business.setAuthorizedSignersCount(2);
+            business.setCommercialLoanEligible(true);
+
+            // Сохраняем счета (данные будут распределены по разным таблицам)
+            session.save(savings);
+            session.save(checking);
+            session.save(business);
+
+            transaction.commit();
+            System.out.println("✅ 3 счета сохранены в 4 таблицы:");
+            System.out.println("   - accounts (родительская)");
+            System.out.println("   - savings_accounts");
+            System.out.println("   - checking_accounts");
+            System.out.println("   - business_accounts");
+
+            // Показываем SQL-структуру
+            System.out.println("\n2. Структура таблиц в базе данных:");
+            System.out.println("   Таблица accounts:");
+            System.out.println("     id, account_number, account_holder, opening_date, balance, currency, is_active");
+
+            System.out.println("\n   Таблица savings_accounts:");
+            System.out.println("     account_id (FK -> accounts.id), interest_rate, minimum_balance, ...");
+
+            System.out.println("\n   Таблица checking_accounts:");
+            System.out.println("     account_id (FK -> accounts.id), overdraft_limit, monthly_fee, ...");
+
+            // Демонстрация полиморфного запроса
+            System.out.println("\n3. Полиморфный запрос всех счетов:");
+            List<Account> allAccounts = session.createQuery(
+                            "FROM Account ORDER BY balance DESC", Account.class)
+                    .list();
+
+            for (Account account : allAccounts) {
+                System.out.printf("   №%s: %s - %,.0f %s (%s)%n",
+                        account.getAccountNumber(),
+                        account.getAccountHolder(),
+                        account.getBalance(),
+                        account.getCurrency(),
+                        account.getClass().getSimpleName());
+            }
+
+            // Запрос только конкретного типа
+            System.out.println("\n4. Запрос только сберегательных счетов:");
+            List<SavingsAccount> savingsAccounts = session.createQuery(
+                            "FROM SavingsAccount WHERE interestRate > 4.0", SavingsAccount.class)
+                    .list();
+
+            for (SavingsAccount sa : savingsAccounts) {
+                System.out.printf("   %s: ставка %.1f%%, мин. баланс %,.0f%n",
+                        sa.getAccountNumber(),
+                        sa.getInterestRate(),
+                        sa.getMinimumBalance());
+            }
+
+            // Показываем SQL-запросы, которые генерирует Hibernate
+            System.out.println("\n5. SQL-запросы, которые выполняет Hibernate:");
+            System.out.println("   При сохранении SavingsAccount:");
+            System.out.println("     INSERT INTO accounts (...) VALUES (...)");
+            System.out.println("     INSERT INTO savings_accounts (...) VALUES (...)");
+
+            System.out.println("\n   При запросе SavingsAccount:");
+            System.out.println("     SELECT a.*, s.* FROM accounts a");
+            System.out.println("     INNER JOIN savings_accounts s ON a.id = s.account_id");
+
+            // Демонстрация преимуществ
+            System.out.println("\n6. Преимущества Joined Table:");
+            System.out.println("   ✅ Нет NULL значений в таблицах");
+            System.out.println("   ✅ Можно использовать NOT NULL для полей подклассов");
+            System.out.println("   ✅ Лучшая нормализация данных");
+            System.out.println("   ✅ Легко добавлять новые подклассы");
+
+            System.out.println("\n7. Недостатки Joined Table:");
+            System.out.println("   ❌ Медленнее из-за JOIN операций");
+            System.out.println("   ❌ Сложнее запросы");
+            System.out.println("   ❌ Больше таблиц в базе");
+
+            // Пример сложного запроса
+            System.out.println("\n8. Сложный запрос с JOIN:");
+            System.out.println("   SELECT a.account_number, a.balance,");
+            System.out.println("          s.interest_rate, c.overdraft_limit");
+            System.out.println("   FROM accounts a");
+            System.out.println("   LEFT JOIN savings_accounts s ON a.id = s.account_id");
+            System.out.println("   LEFT JOIN checking_accounts c ON a.id = c.account_id");
+            System.out.println("   WHERE a.is_active = true");
+
+            // Проверка связи данных
+            System.out.println("\n9. Проверка связей между таблицами:");
+            Account testAccount = session.get(Account.class, savings.getId());
+            if (testAccount instanceof SavingsAccount) {
+                SavingsAccount retrievedSavings = (SavingsAccount) testAccount;
+                System.out.printf("   Получен сберегательный счет: %s, ставка: %.1f%%%n",
+                        retrievedSavings.getAccountNumber(),
+                        retrievedSavings.getInterestRate());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateDiscriminator() {
