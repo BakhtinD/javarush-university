@@ -10,6 +10,10 @@ import com.javarush.entity.joinedtablestrategy.Account;
 import com.javarush.entity.joinedtablestrategy.BusinessAccount;
 import com.javarush.entity.joinedtablestrategy.CheckingAccount;
 import com.javarush.entity.joinedtablestrategy.SavingsAccount;
+import com.javarush.entity.primarykey.BaseOrder;
+import com.javarush.entity.primarykey.OnlineOrder;
+import com.javarush.entity.primarykey.StoreOrder;
+import com.javarush.entity.primarykey.WholesaleOrder;
 import com.javarush.entity.singletable.Admin;
 import com.javarush.entity.singletable.Employee;
 import com.javarush.entity.singletable.Person;
@@ -32,8 +36,161 @@ public class Main {
 
         demonstrateJoinedTableInheritance();
 
+        demonstratePrimaryKeyJoinColumn();
+
         HibernateUtil.shutdown();
 
+    }
+
+    private static void demonstratePrimaryKeyJoinColumn() {
+        System.out.println("=== Демонстрация @PrimaryKeyJoinColumn ===");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очищаем таблицы
+            session.createQuery("DELETE FROM StoreOrder").executeUpdate();
+            session.createQuery("DELETE FROM WholesaleOrder").executeUpdate();
+            session.createQuery("DELETE FROM OnlineOrder").executeUpdate();
+            session.createQuery("DELETE FROM BaseOrder").executeUpdate();
+
+            System.out.println("\n1. Создаем заказы разных типов:");
+
+            // Онлайн заказ
+            OnlineOrder onlineOrder = new OnlineOrder();
+            onlineOrder.setOrderNumber("ONL-2024-001");
+            onlineOrder.setCustomerName("Alexey");
+            onlineOrder.setTotalAmount(12500.0);
+            onlineOrder.setCustomerEmail("alexey@example.com");
+            onlineOrder.setShippingAddress("Tokio");
+            onlineOrder.setPaymentMethod("CREDIT_CARD");
+            onlineOrder.setTrackingNumber("TRK-123456789");
+
+            // Оптовый заказ с кастомным PrimaryKeyJoinColumn
+            WholesaleOrder wholesaleOrder = new WholesaleOrder();
+            wholesaleOrder.setOrderNumber("WHO-2024-001");
+            wholesaleOrder.setCustomerName("Apple");
+            wholesaleOrder.setTotalAmount(250000.0);
+            wholesaleOrder.setCompanyName("Google");
+            wholesaleOrder.setTaxId("7701123456");
+            wholesaleOrder.setDeliveryTerms("FOB");
+            wholesaleOrder.setPurchaseOrderNumber("PO-2024-1001");
+
+            // Магазинный заказ (без @PrimaryKeyJoinColumn)
+            StoreOrder storeOrder = new StoreOrder();
+            storeOrder.setOrderNumber("STR-2024-001");
+            storeOrder.setCustomerName("Mary");
+            storeOrder.setTotalAmount(3500.0);
+            storeOrder.setStoreLocation("Zoom Inc");
+            storeOrder.setCashierId("EMP-007");
+            storeOrder.setPaymentType("CARD");
+            storeOrder.setCustomerFeedbackRating(5);
+
+            // Сохраняем
+            session.save(onlineOrder);
+            session.save(wholesaleOrder);
+            session.save(storeOrder);
+
+            transaction.commit();
+            System.out.println("✅ 3 заказа сохранены в разные таблицы");
+
+            // Показываем структуру таблиц
+            System.out.println("\n2. Структура таблиц в БД:");
+            System.out.println("   Таблица base_orders:");
+            System.out.println("     order_id (PK), order_number, customer_name, order_date, total_amount, status");
+
+            System.out.println("\n   Таблица online_orders:");
+            System.out.println("     online_order_id (PK, FK -> base_orders.order_id) - кастомное имя!");
+            System.out.println("     customer_email, shipping_address, payment_method, ...");
+
+            System.out.println("\n   Таблица wholesale_orders:");
+            System.out.println("     wholesale_ref_id (PK, FK -> base_orders.order_id) - кастомное имя!");
+            System.out.println("     company_name, tax_id, delivery_terms, ...");
+
+            System.out.println("\n   Таблица store_orders:");
+            System.out.println("     order_id (PK, FK -> base_orders.order_id) - имя по умолчанию!");
+            System.out.println("     store_location, cashier_id, receipt_number, ...");
+
+            // Демонстрация SQL схемы
+            System.out.println("\n3. SQL-схема, созданная Hibernate:");
+            System.out.println("   -- Онлайн заказы:");
+            System.out.println("   CREATE TABLE online_orders (");
+            System.out.println("     online_order_id BIGINT NOT NULL,");
+            System.out.println("     customer_email VARCHAR(255) NOT NULL,");
+            System.out.println("     ...");
+            System.out.println("     PRIMARY KEY (online_order_id),");
+            System.out.println("     FOREIGN KEY (online_order_id) REFERENCES base_orders(order_id)");
+            System.out.println("   )");
+
+            System.out.println("\n   -- Оптовые заказы:");
+            System.out.println("   CREATE TABLE wholesale_orders (");
+            System.out.println("     wholesale_ref_id BIGINT NOT NULL,");
+            System.out.println("     company_name VARCHAR(255) NOT NULL,");
+            System.out.println("     ...");
+            System.out.println("     PRIMARY KEY (wholesale_ref_id),");
+            System.out.println("     FOREIGN KEY (wholesale_ref_id) REFERENCES base_orders(order_id)");
+            System.out.println("   )");
+
+            // Запрос данных
+            System.out.println("\n4. Запрос всех онлайн заказов:");
+            List<OnlineOrder> onlineOrders = session.createQuery(
+                            "FROM OnlineOrder", OnlineOrder.class)
+                    .list();
+
+            for (OnlineOrder order : onlineOrders) {
+                System.out.printf("   Заказ №%s: %s, доставка: %s%n",
+                        order.getOrderNumber(),
+                        order.getCustomerEmail(),
+                        order.getShippingAddress());
+            }
+
+            // Показываем JOIN запрос
+            System.out.println("\n5. SQL-запрос, который выполняет Hibernate:");
+            System.out.println("   SELECT o.*, oo.*");
+            System.out.println("   FROM base_orders o");
+            System.out.println("   INNER JOIN online_orders oo ON o.order_id = oo.online_order_id");
+            System.out.println("   WHERE o.status = 'NEW'");
+
+            // Сравнение с именем по умолчанию
+            System.out.println("\n6. Сравнение с именем по умолчанию:");
+            System.out.println("   Без @PrimaryKeyJoinColumn:");
+            System.out.println("     Колонка будет называться 'order_id' (как в родительской таблице)");
+
+            System.out.println("\n   С @PrimaryKeyJoinColumn(name = 'online_order_id'):");
+            System.out.println("     Колонка будет называться 'online_order_id'");
+
+            // Преимущества кастомного имени
+            System.out.println("\n7. Зачем менять имя колонки?");
+            System.out.println("   ✅ Читаемость: яснее связь между таблицами");
+            System.out.println("   ✅ Консистентность: можно использовать naming conventions");
+            System.out.println("   ✅ Миграция: совместимость с существующей БД");
+            System.out.println("   ✅ Ясность: явное указание, что это внешний ключ");
+
+            // Проверка связи
+            System.out.println("\n8. Проверка связи данных:");
+            BaseOrder baseOrder = session.get(BaseOrder.class, onlineOrder.getOrderId());
+            if (baseOrder instanceof OnlineOrder) {
+                OnlineOrder retrieved = (OnlineOrder) baseOrder;
+                System.out.printf("   Получен онлайн заказ через связь: %s → %s%n",
+                        retrieved.getOrderId(),
+                        retrieved.getOnlineOrderId());
+            }
+
+            // Дополнительный пример с referencedColumnName
+            System.out.println("\n9. Использование referencedColumnName:");
+            System.out.println("   @PrimaryKeyJoinColumn(");
+            System.out.println("     name = 'custom_id',");
+            System.out.println("     referencedColumnName = 'parent_id'  // ссылаемся на другую колонку");
+            System.out.println("   )");
+
+            System.out.println("\n   Это полезно, когда:");
+            System.out.println("   - В родительской таблице PK называется не 'id'");
+            System.out.println("   - Нужно ссылаться на другую уникальную колонку");
+            System.out.println("   - Есть композитный первичный ключ");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateJoinedTableInheritance() {
