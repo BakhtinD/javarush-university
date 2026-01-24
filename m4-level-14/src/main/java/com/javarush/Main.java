@@ -35,7 +35,7 @@ public class Main {
 
         System.out.println("Starting...");
         // При кэшировании приложение не завершается
-        // demonstrateCachingSlides13to22();
+        demonstrateCachingSlides13to22();
         System.out.println("Finished!");
 
     }
