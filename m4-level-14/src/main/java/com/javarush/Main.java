@@ -18,6 +18,53 @@ public class Main {
 
         demonstrateSlide5();
 
+        demonstrateSlide6();
+
+    }
+
+    private static void demonstrateSlide6() {
+        System.out.println("=== @LazyCollection Demo ===");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction tx = session.beginTransaction();
+
+        // Create data
+        Team team = new Team();
+        team.setName("Dream Team");
+        session.save(team);
+
+        Player player = new Player();
+        player.setName("John Striker");
+        player.setTeam(team);
+        session.save(player);
+
+        Goal goal1 = new Goal();
+        goal1.setMatch("Final Match");
+        goal1.setPlayer(player);
+        session.save(goal1);
+
+        tx.commit();
+        session.close();
+
+        // Demonstrate
+        session = HibernateUtil.getSessionFactory().openSession();
+        Team loadedTeam = session.get(Team.class, team.getId());
+
+        System.out.println("Team loaded: " + loadedTeam.getName());
+        System.out.println("Players initialized? " +
+                Hibernate.isInitialized(loadedTeam.getPlayers()));
+
+        // Access players - LAZY load
+        System.out.println("Accessing players...");
+        loadedTeam.getPlayers().forEach(p -> {
+            System.out.println("Player: " + p.getName());
+            // Goals are EAGER loaded
+            System.out.println("Goals count: " + p.getGoals().size());
+        });
+
+        session.close();
+
+        System.out.println("=== END ===");
     }
 
     private static void demonstrateSlide5() {
