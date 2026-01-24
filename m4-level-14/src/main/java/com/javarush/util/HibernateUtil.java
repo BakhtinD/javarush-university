@@ -1,8 +1,6 @@
 package com.javarush.util;
 
-import com.javarush.entity.Comment;
-import com.javarush.entity.Department;
-import com.javarush.entity.User;
+import com.javarush.entity.*;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
@@ -62,6 +60,10 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(Comment.class);
                 metadataSources.addAnnotatedClass(Department.class);
 
+                metadataSources.addAnnotatedClass(Author.class);
+                metadataSources.addAnnotatedClass(Publisher.class);
+                metadataSources.addAnnotatedClass(Book.class);
+                metadataSources.addAnnotatedClass(Review.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
