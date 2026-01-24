@@ -10,6 +10,7 @@ import com.javarush.entity.joinedtablestrategy.Account;
 import com.javarush.entity.joinedtablestrategy.BusinessAccount;
 import com.javarush.entity.joinedtablestrategy.CheckingAccount;
 import com.javarush.entity.joinedtablestrategy.SavingsAccount;
+import com.javarush.entity.polymorphism.*;
 import com.javarush.entity.primarykey.BaseOrder;
 import com.javarush.entity.primarykey.OnlineOrder;
 import com.javarush.entity.primarykey.StoreOrder;
@@ -44,8 +45,179 @@ public class Main {
 
         demonstrateTablePerClass();
 
+        demonstrateExplicitPolymorphism();
+
         HibernateUtil.shutdown();
 
+    }
+
+    private static void demonstrateExplicitPolymorphism() {
+        System.out.println("=== Demonstration: @Polymorphism EXPLICIT ===");
+        System.out.println("(Excluding classes from polymorphic queries)\n");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Clear the table
+            session.createQuery("DELETE FROM Notification").executeUpdate();
+
+            System.out.println("1. Creating different notification types:");
+
+            // Regular notifications
+            EmailNotification email = new EmailNotification();
+            email.setTitle("Welcome to Our Service");
+            email.setMessage("Thank you for registering with our platform.");
+            email.setRecipient("user@example.com");
+            email.setSenderEmail("noreply@company.com");
+            email.setEmailTemplate("WELCOME_TEMPLATE");
+
+            SmsNotification sms = new SmsNotification();
+            sms.setTitle("Security Alert");
+            sms.setMessage("New login detected from unknown device.");
+            sms.setRecipient("+1234567890");
+            sms.setSenderNumber("COMPANY");
+            sms.setCharacterCount(45);
+
+            PushNotification push = new PushNotification();
+            push.setTitle("New Message");
+            push.setMessage("You have received a new message from John.");
+            push.setRecipient("device_token_abc123");
+            push.setPlatform("IOS");
+            push.setBadgeCount(1);
+
+            // INTERNAL notification (marked as EXPLICIT)
+            InternalNotification internal = new InternalNotification();
+            internal.setTitle("Database Connection Pool");
+            internal.setMessage("Connection pool size exceeded threshold.");
+            internal.setRecipient("admin@company.com");
+            internal.setSystemComponent("DatabaseManager");
+            internal.setLogLevel("ERROR");
+            internal.setTechnicalDetails("Pool size: 95/100, Wait time: 2.5s");
+            internal.setDeveloperOnly(true);
+
+            // Save all notifications
+            session.save(email);
+            session.save(sms);
+            session.save(push);
+            session.save(internal);
+
+            transaction.commit();
+            System.out.println("✅ 4 notifications saved (1 is EXPLICIT)");
+
+            // Demonstration 1: Polymorphic query to base class
+            System.out.println("\n2. Polymorphic query: FROM Notification");
+            List<Notification> allNotifications = session.createQuery(
+                            "FROM Notification ORDER BY createdAt", Notification.class)
+                    .list();
+
+            System.out.println("Total notifications returned: " + allNotifications.size());
+            System.out.println("(InternalNotification is EXCLUDED due to @Polymorphism(EXPLICIT))");
+
+            for (Notification notification : allNotifications) {
+                System.out.printf("   %s: %s -> %s%n",
+                        notification.getClass().getSimpleName(),
+                        notification.getTitle(),
+                        notification.getRecipient());
+            }
+
+            // Demonstration 2: Direct query to InternalNotification
+            System.out.println("\n3. Direct query: FROM InternalNotification");
+            List<InternalNotification> internalNotifications = session.createQuery(
+                            "FROM InternalNotification", InternalNotification.class)
+                    .list();
+
+            System.out.println("Internal notifications (direct query): " + internalNotifications.size());
+            for (InternalNotification internalNote : internalNotifications) {
+                System.out.printf("   Internal: %s [%s]%n",
+                        internalNote.getTitle(),
+                        internalNote.getLogLevel());
+            }
+
+            // Demonstration 3: Query with explicit type filter
+            System.out.println("\n4. Query with type filter:");
+            System.out.println("   SELECT n FROM Notification n");
+            System.out.println("   WHERE TYPE(n) IN (EmailNotification, SmsNotification, PushNotification)");
+
+            List<Notification> filtered = session.createQuery(
+                            "SELECT n FROM Notification n WHERE TYPE(n) IN (EmailNotification, SmsNotification, PushNotification)",
+                            Notification.class)
+                    .list();
+
+            System.out.println("   Result: " + filtered.size() + " notifications");
+
+            // Demonstration 4: Show database structure
+            System.out.println("\n5. Database structure (SINGLE_TABLE):");
+            System.out.println("   Table: notifications");
+            System.out.println("   Discriminator column: notification_type");
+            System.out.println("   Values: EMAIL, SMS, PUSH, INTERNAL");
+            System.out.println("\n   But INTERNAL is @Polymorphism(EXPLICIT) - excluded from polymorphic queries!");
+
+            // Demonstration 5: Using TYPE() function in queries
+            System.out.println("\n6. Using TYPE() function to check:");
+            System.out.println("   Check which types are actually in polymorphic results:");
+
+            List<Object[]> typeResults = session.createQuery(
+                            "SELECT TYPE(n), COUNT(n) FROM Notification n GROUP BY TYPE(n)", Object[].class)
+                    .list();
+
+            System.out.println("   Types in polymorphic query results:");
+            for (Object[] result : typeResults) {
+                System.out.printf("   - %s: %d instances%n",
+                        ((Class<?>) result[0]).getSimpleName(),
+                        result[1]);
+            }
+
+            // Demonstration 6: Why use EXPLICIT polymorphism?
+            System.out.println("\n7. Why use @Polymorphism(EXPLICIT)?");
+            System.out.println("   Use case 1: Technical/System classes");
+            System.out.println("     - Internal logs, debug information");
+            System.out.println("     - System-generated notifications");
+            System.out.println("     - Should not appear in user-facing queries");
+
+            System.out.println("\n   Use case 2: Legacy compatibility");
+            System.out.println("     - Old classes in hierarchy");
+            System.out.println("     - Deprecated functionality");
+            System.out.println("     - Keep in DB but hide from queries");
+
+            System.out.println("\n   Use case 3: Security/Privacy");
+            System.out.println("     - Sensitive notification types");
+            System.out.println("     - Admin-only notifications");
+            System.out.println("     - Need explicit permission to query");
+
+            // Demonstration 7: Comparison with IMPLICIT (default)
+            System.out.println("\n8. Comparison with default behavior:");
+            System.out.println("   Default: @Polymorphism(type = PolymorphismType.IMPLICIT)");
+            System.out.println("   - All subclasses included in polymorphic queries");
+            System.out.println("   - No control over which types appear");
+
+            System.out.println("\n   EXPLICIT: @Polymorphism(type = PolymorphismType.EXPLICIT)");
+            System.out.println("   - Class excluded from polymorphic queries");
+            System.out.println("   - Must query directly to access");
+            System.out.println("   - More control, better security");
+
+            // Demonstration 8: Real-world example
+            System.out.println("\n9. Real-world example scenario:");
+            System.out.println("   Notification System:");
+            System.out.println("   - EmailNotification (user-facing)");
+            System.out.println("   - SmsNotification (user-facing)");
+            System.out.println("   - PushNotification (user-facing)");
+            System.out.println("   - InternalNotification (EXPLICIT - system only)");
+            System.out.println("   - AuditNotification (EXPLICIT - admin only)");
+
+            System.out.println("\n   User query: 'get my notifications'");
+            System.out.println("   Returns only: Email, SMS, Push");
+            System.out.println("   Excludes: Internal, Audit");
+
+            // Cleanup
+            System.out.println("\n10. Summary:");
+            System.out.println("   ✅ @Polymorphism(EXPLICIT) gives control over polymorphic queries");
+            System.out.println("   ✅ Useful for technical/system classes");
+            System.out.println("   ✅ Maintains inheritance benefits while controlling visibility");
+            System.out.println("   ✅ Can query excluded types directly when needed");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateTablePerClass() {

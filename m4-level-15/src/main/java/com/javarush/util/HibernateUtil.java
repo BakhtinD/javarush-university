@@ -93,6 +93,12 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(com.javarush.entity.tableperclass.Book.class);
                 metadataSources.addAnnotatedClass(com.javarush.entity.tableperclass.MusicAlbum.class);
 
+                metadataSources.addAnnotatedClass(com.javarush.entity.polymorphism.Notification.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.polymorphism.EmailNotification.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.polymorphism.SmsNotification.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.polymorphism.InternalNotification.class);
+                metadataSources.addAnnotatedClass(com.javarush.entity.polymorphism.PushNotification.class);
+
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
 
