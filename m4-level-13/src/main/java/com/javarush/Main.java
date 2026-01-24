@@ -25,7 +25,36 @@ public class Main {
 
         demonstrateSlide6();
 
+        demonstrateSlide8();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide8() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // 1. Создаём университет
+            University university = new University("JavaRush University");
+
+            // 2. Создаём студентов и добавляем в коллекцию
+            Student student1 = new Student("Alex");
+            Student student2 = new Student("Maria");
+
+            university.getStudents().add(student1);
+            university.getStudents().add(student2);
+
+            // 3. Сохраняем университет (студенты сохранятся каскадно)
+            session.save(university);
+
+            tx.commit();
+
+            System.out.println("✅ @OneToMany Example");
+            System.out.println("University: " + university.getName());
+            System.out.println("Students count: " + university.getStudents().size());
+            university.getStudents().forEach(s -> System.out.println("  - " + s.getName()));
+
+        }
     }
 
     private static void demonstrateSlide3() {
