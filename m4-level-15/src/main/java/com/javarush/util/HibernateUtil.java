@@ -2,6 +2,10 @@ package com.javarush.util;
 
 import com.javarush.entity.Product;
 import com.javarush.entity.User;
+import com.javarush.entity.singletable.Admin;
+import com.javarush.entity.singletable.Employee;
+import com.javarush.entity.singletable.Person;
+import com.javarush.entity.singletable.RegularUser;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
@@ -59,6 +63,11 @@ public class HibernateUtil {
                 // Регистрируем сущности
                 metadataSources.addAnnotatedClass(User.class);
                 metadataSources.addAnnotatedClass(Product.class);
+
+                metadataSources.addAnnotatedClass(Person.class);
+                metadataSources.addAnnotatedClass(RegularUser.class);
+                metadataSources.addAnnotatedClass(Employee.class);
+                metadataSources.addAnnotatedClass(Admin.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();

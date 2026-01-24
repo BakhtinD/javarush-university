@@ -38,6 +38,8 @@ public class Main {
         demonstrateCachingSlides13to22();
         System.out.println("Finished!");
 
+        HibernateUtil.shutdown();
+
     }
 
     private static void demonstrateCachingSlides13to22() {
