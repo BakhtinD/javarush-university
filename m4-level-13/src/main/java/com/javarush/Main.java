@@ -8,6 +8,7 @@ import org.hibernate.query.Query;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -37,7 +38,102 @@ public class Main {
 
         demonstrateSlide13();
 
+        demonstrateSlide14();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide14() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            System.out.println("\n✅ Двусторонний OneToOne Example (Patient ↔ MedicalCard)");
+
+            // 1. Создаём медицинские карты
+            MedicalCard card1 = new MedicalCard(
+                    "A+",
+                    "Пенициллин, орехи",
+                    LocalDateTime.of(2024, 1, 15, 10, 30)
+            );
+
+            MedicalCard card2 = new MedicalCard(
+                    "O-",
+                    "Нет",
+                    LocalDateTime.of(2024, 2, 20, 14, 45)
+            );
+
+            // 2. Создаём пациентов
+            Patient patient1 = new Patient(
+                    "Ирина Петрова",
+                    LocalDate.of(1990, 5, 12),
+                    "INS123456"
+            );
+
+            Patient patient2 = new Patient(
+                    "Сергей Козлов",
+                    LocalDate.of(1985, 8, 25),
+                    "INS789012"
+            );
+
+            // 3. Устанавливаем ДВУСТОРОННЮЮ связь
+            patient1.setMedicalCard(card1);
+            card1.setPatient(patient1);
+
+            patient2.setMedicalCard(card2);
+            card2.setPatient(patient2);
+
+            // 4. Сохраняем пациентов (медкарты сохранятся каскадно)
+            session.save(patient1);
+            session.save(patient2);
+
+            tx.commit();
+
+            System.out.println("\n📊 Данные сохранены:");
+            System.out.println("   Пациент 1: " + patient1.getFullName() +
+                    " (страховка: " + patient1.getInsuranceNumber() + ")");
+            System.out.println("   Медкарта 1: группа крови " + card1.getBloodType() +
+                    ", аллергии: " + card1.getAllergies());
+
+            System.out.println("   Пациент 2: " + patient2.getFullName() +
+                    " (страховка: " + patient2.getInsuranceNumber() + ")");
+            System.out.println("   Медкарта 2: группа крови " + card2.getBloodType() +
+                    ", аллергии: " + card2.getAllergies());
+
+            // 5. Демонстрация двусторонней связи
+            System.out.println("\n🔍 Двусторонняя связь:");
+            System.out.println("   Пациент → Медкарта: " +
+                    patient1.getFullName() + " имеет группу крови " +
+                    patient1.getMedicalCard().getBloodType());
+            System.out.println("   Медкарта → Пациент: " +
+                    card1.getBloodType() + " принадлежит " +
+                    card1.getPatient().getFullName());
+
+            // 6. Показываем структуру БД
+            System.out.println("\n📈 Структура базы данных:");
+            System.out.println("   Таблица patients:");
+            System.out.println("     id | full_name | date_of_birth | insurance_number | medical_card_id (FK)");
+            System.out.println("   Таблица medical_cards:");
+            System.out.println("     id | blood_type | allergies | last_checkup_date");
+            System.out.println("   Внимание: В medical_cards НЕТ patient_id!");
+            System.out.println("   Связь через patients.medical_card_id → medical_cards.id");
+
+            // 7. Загружаем данные и показываем, что связь работает в обе стороны
+            session.clear();
+
+            Patient loadedPatient = session.get(Patient.class, patient1.getId());
+            MedicalCard loadedCard = session.get(MedicalCard.class, card1.getId());
+
+            System.out.println("\n🔄 Загружено из базы:");
+            System.out.println("   Пациент знает свою медкарту: " +
+                    (loadedPatient.getMedicalCard() != null ? "Да" : "Нет"));
+            System.out.println("   Медкарта знает своего пациента: " +
+                    (loadedCard.getPatient() != null ? "Да" : "Нет"));
+            System.out.println("   Это один и тот же пациент: " +
+                    loadedPatient.getFullName().equals(loadedCard.getPatient().getFullName()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSlide13() {
