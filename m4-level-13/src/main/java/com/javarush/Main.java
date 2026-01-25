@@ -31,7 +31,74 @@ public class Main {
 
         demonstrateSlide10();
 
+        demonstrateSlide11();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide11() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            System.out.println("\n✅ @OneToOne Examples (New Entities)");
+
+            // === 1. Односторонний OneToOne ===
+            System.out.println("\n1. Односторонний OneToOne (Passport → Person):");
+            Person person1 = new Person("John Doe");
+            session.save(person1);
+
+            Passport passport = new Passport("AB123456", "USA");
+            passport.setPerson(person1);
+            session.save(passport);
+
+            System.out.println("   Person: " + person1.getName());
+            System.out.println("   Passport: " + passport.getNumber());
+            System.out.println("   Passport knows person: " + (passport.getPerson() != null));
+            System.out.println("   Person knows passport: " + (person1.getPassport() == null ? "No" : "Yes"));
+
+            // === 2. Двусторонний OneToOne ===
+            System.out.println("\n2. Двусторонний OneToOne (Person ↔ Passport):");
+            Person person2 = new Person("Alice Smith");
+            Passport passport2 = new Passport("CD789012", "Canada");
+
+            // Устанавливаем связь с двух сторон
+            person2.setPassport(passport2);
+            passport2.setPerson(person2);
+
+            session.save(person2); // passport2 сохранится каскадно
+
+            System.out.println("   Person: " + person2.getName());
+            System.out.println("   Passport country: " + passport2.getCountry());
+            System.out.println("   Person knows passport: " + (person2.getPassport() != null));
+
+            // === 3. @MapsId ===
+            System.out.println("\n3. @MapsId (Car ↔ Engine with shared ID):");
+            Car car = new Car("Tesla Model 3", "Red");
+            session.save(car);
+
+            Engine engine = new Engine("Electric", 450);
+            engine.setCar(car); // ID установится автоматически из car.id
+
+            session.save(engine);
+
+            System.out.println("   Car ID: " + car.getId());
+            System.out.println("   Engine ID: " + engine.getId());
+            System.out.println("   IDs are equal: " + car.getId().equals(engine.getId()));
+            System.out.println("   Car model: " + car.getModel());
+            System.out.println("   Engine type: " + engine.getType());
+
+            tx.commit();
+
+            // Проверяем структуру БД
+            System.out.println("\n📊 Database tables created:");
+            System.out.println("   - persons (id, name)");
+            System.out.println("   - passports (id, number, country, person_id) ← FK");
+            System.out.println("   - cars (id, model, color)");
+            System.out.println("   - engines (id, type, horsepower) ← id = FK to cars.id");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSlide10() {
