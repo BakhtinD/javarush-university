@@ -29,7 +29,62 @@ public class Main {
 
         demonstrateSlide9();
 
+        demonstrateSlide10();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide10() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            // 1. Создаём проекты
+            Project webApp = new Project("Web Application");
+            Project mobileApp = new Project("Mobile App");
+
+            // 2. Создаём разработчиков
+            Developer alice = new Developer("Alice");
+            Developer bob = new Developer("Bob");
+            Developer charlie = new Developer("Charlie");
+
+            // 3. Сохраняем разработчиков (явно)
+            session.save(alice);
+            session.save(bob);
+            session.save(charlie);
+
+            // 4. Устанавливаем связи
+            webApp.getDevelopers().add(alice);
+            webApp.getDevelopers().add(bob);
+
+            mobileApp.getDevelopers().add(bob);
+            mobileApp.getDevelopers().add(charlie);
+
+            // 5. Сохраняем проекты (разработчики уже сохранены)
+            session.save(webApp);
+            session.save(mobileApp);
+
+            tx.commit();
+
+            System.out.println("\n✅ @ManyToMany with @JoinTable Example");
+            System.out.println("Project '" + webApp.getName() + "' has developers: " +
+                    webApp.getDevelopers().size());
+            System.out.println("Project '" + mobileApp.getName() + "' has developers: " +
+                    mobileApp.getDevelopers().size());
+            System.out.println("Developer 'Bob' works on projects: " + bob.getProjects().size());
+
+            // Проверяем промежуточную таблицу через запрос
+            List<Object[]> results = session.createNativeQuery(
+                    "SELECT project_id, developer_id FROM project_developer ORDER BY project_id"
+            ).list();
+
+            System.out.println("\n📊 Intermediate table 'project_developer' contents:");
+            for (Object[] row : results) {
+                System.out.println("  Project ID: " + row[0] + ", Developer ID: " + row[1]);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSlide9() {
