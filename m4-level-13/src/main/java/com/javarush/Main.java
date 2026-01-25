@@ -40,7 +40,89 @@ public class Main {
 
         demonstrateSlide14();
 
+        demonstrateSlide16();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide16() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            System.out.println("\n✅ CascadeType Examples");
+
+            // === 1. CascadeType.ALL (сохранение) ===
+            System.out.println("\n1. CascadeType.ALL - автоматическое сохранение:");
+
+            Order order = new Order("ORD-001", LocalDateTime.now(), "Иван Иванов");
+
+            // Создаём items (НЕ сохраняем их явно!)
+            OrderItem item1 = new OrderItem("Ноутбук", 1, new BigDecimal("1500.00"), new BigDecimal("10"));
+            OrderItem item2 = new OrderItem("Мышь", 2, new BigDecimal("50.00"), new BigDecimal("5"));
+
+            // Добавляем items в order
+            order.addItem(item1);
+            order.addItem(item2);
+
+            // Сохраняем только order - items сохранятся каскадно
+            session.save(order);
+
+            System.out.println("   Сохранён Order: " + order.getOrderNumber());
+            System.out.println("   Items сохранены автоматически: " + order.getItems().size());
+
+            // === 2. CascadeType.MERGE (обновление) ===
+            System.out.println("\n2. CascadeType.MERGE - автоматическое обновление:");
+
+            // Изменяем данные в detached состоянии
+            order.setCustomerName("Иван Петров");
+            item1.setDiscount(new BigDecimal("15")); // скидка 15% вместо 10%
+
+            // Обновляем только order - item1 обновится каскадно
+            session.merge(order);
+
+            System.out.println("   Order обновлён: " + order.getCustomerName());
+            System.out.println("   Item обновлён автоматически: скидка " + item1.getDiscount() + "%");
+
+            // === 3. CascadeType.REMOVE (удаление) ===
+            System.out.println("\n3. CascadeType.REMOVE - автоматическое удаление:");
+
+            // Удаляем order - все items удалятся каскадно
+            session.delete(order);
+
+            System.out.println("   Order удалён");
+            System.out.println("   Items удалены автоматически");
+
+            // === 4. Проверка разных cascade комбинаций ===
+            System.out.println("\n4. Разные cascade комбинации:");
+
+            Order order2 = new Order("ORD-002", LocalDateTime.now(), "Петр Сидоров");
+            OrderItem item3 = new OrderItem("Клавиатура", 1, new BigDecimal("100.00"), BigDecimal.ZERO);
+
+            // Проверяем PERSIST без MERGE
+            order2.addItem(item3);
+            session.save(order2);
+
+            // Пытаемся изменить без MERGE (должно работать, т.к. объект attached)
+            item3.setPrice(new BigDecimal("120.00"));
+
+            System.out.println("   Order сохранён с PERSIST cascade");
+            System.out.println("   Item цена изменена: " + item3.getPrice());
+
+            tx.commit();
+
+            // === 5. Проверяем orphanRemoval ===
+            System.out.println("\n5. orphanRemoval = true:");
+            System.out.println("   Если удалить item из коллекции, он удалится из БД");
+            System.out.println("   Пример: order.getItems().remove(item) → item удаляется");
+
+            // === 6. Показываем SQL логи ===
+            System.out.println("\n📊 Посмотрите SQL логи в консоли:");
+            System.out.println("   При сохранении Order: INSERT в orders + INSERTs в order_items");
+            System.out.println("   При удалении Order: DELETE из orders + DELETEs из order_items");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSlide14() {
