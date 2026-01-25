@@ -35,7 +35,73 @@ public class Main {
 
         demonstrateSlide12();
 
+        demonstrateSlide13();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide13() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            System.out.println("\n✅ Односторонний OneToOne Example");
+
+            // 1. Создаём водителей
+            Driver driver1 = new Driver("Иван Иванов", "DL123456");
+            Driver driver2 = new Driver("Петр Петров", "DL789012");
+
+            session.save(driver1);
+            session.save(driver2);
+
+            // 2. Создаём транспортные средства
+            Vehicle car1 = new Vehicle("Toyota Camry", "A123BC", LocalDate.of(2022, 5, 15));
+            Vehicle car2 = new Vehicle("Honda Civic", "B456DE", LocalDate.of(2023, 3, 20));
+
+            // 3. Назначаем водителей (односторонняя связь)
+            car1.setDriver(driver1); // Эта машина закреплена за Иваном
+            car2.setDriver(driver2); // Эта машина закреплена за Петром
+
+            // 4. Сохраняем транспортные средства
+            session.save(car1);
+            session.save(car2);
+
+            tx.commit();
+
+            System.out.println("\n📊 Данные сохранены:");
+            System.out.println("   Водитель 1: " + driver1.getName() + " (лицензия: " + driver1.getLicenseNumber() + ")");
+            System.out.println("   Водитель 2: " + driver2.getName() + " (лицензия: " + driver2.getLicenseNumber() + ")");
+            System.out.println("   Машина 1: " + car1.getModel() + " (" + car1.getLicensePlate() + ")");
+            System.out.println("   Машина 2: " + car2.getModel() + " (" + car2.getLicensePlate() + ")");
+
+            // 5. Демонстрация односторонней связи
+            System.out.println("\n🔍 Односторонняя связь:");
+            System.out.println("   Машина знает своего водителя: " + car1.getDriver().getName());
+            System.out.println("   Но водитель не знает свою машину (у Driver нет поля Vehicle)");
+
+            // 6. Показываем структуру БД
+            System.out.println("\n📈 Структура базы данных:");
+            System.out.println("   Таблица drivers:");
+            System.out.println("     id | name | license_number");
+            System.out.println("   Таблица vehicles:");
+            System.out.println("     id | model | license_plate | driver_id (UNIQUE FK) | registration_date");
+            System.out.println("   Ограничение UNIQUE на driver_id гарантирует 1:1 связь");
+
+            // 7. Проверяем, что нельзя назначить одного водителя на две машины
+            try {
+                tx = session.beginTransaction();
+                Vehicle car3 = new Vehicle("Ford Focus", "C789FG", LocalDate.now());
+                car3.setDriver(driver1); // Пытаемся назначить того же водителя
+                session.save(car3);
+                tx.commit();
+                System.out.println("\n❌ ОШИБКА: Должна была быть ошибка UNIQUE constraint!");
+            } catch (Exception e) {
+                System.out.println("\n✅ Правильно: Получили ошибку - один водитель не может вести две машины");
+                System.out.println("   Сообщение: " + e.getMessage());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSlide12() {
