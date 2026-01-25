@@ -83,6 +83,9 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(Car.class);
                 metadataSources.addAnnotatedClass(Engine.class);
 
+                metadataSources.addAnnotatedClass(Company.class);
+                // Address и ContactInfo не регистрируются - они embeddable
+
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
 

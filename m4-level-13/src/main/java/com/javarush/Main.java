@@ -33,7 +33,66 @@ public class Main {
 
         demonstrateSlide11();
 
+        demonstrateSlide12();
+
         HibernateUtil.shutdown();
+    }
+
+    private static void demonstrateSlide12() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction tx = session.beginTransaction();
+
+            System.out.println("\n✅ @Embedded Example");
+
+            // Создаём встроенные объекты
+            Address address = new Address(
+                    "123 Tech Street",
+                    "San Francisco",
+                    "94107",
+                    "USA"
+            );
+
+            ContactInfo contactInfo = new ContactInfo(
+                    "info@techcorp.com",
+                    "+1-555-1234",
+                    "www.techcorp.com"
+            );
+
+            // Создаём компанию с встроенными объектами
+            Company company = new Company("TechCorp Inc.", address, contactInfo);
+
+            // Сохраняем (все поля сохранятся в одной таблице)
+            session.save(company);
+
+            tx.commit();
+
+            System.out.println("\n💾 Company saved with embedded objects:");
+            System.out.println("   ID: " + company.getId());
+            System.out.println("   Name: " + company.getName());
+            System.out.println("   Address: " + company.getAddress());
+            System.out.println("   Contact: " + company.getContactInfo());
+
+            // Загружаем обратно и проверяем
+            session.clear();
+            Company loadedCompany = session.get(Company.class, company.getId());
+
+            System.out.println("\n📥 Loaded from database:");
+            System.out.println("   Street: " + loadedCompany.getAddress().getStreet());
+            System.out.println("   City: " + loadedCompany.getAddress().getCity());
+            System.out.println("   Email: " + loadedCompany.getContactInfo().getEmail());
+            System.out.println("   Phone: " + loadedCompany.getContactInfo().getPhone());
+
+            // Показываем SQL структуру
+            System.out.println("\n📊 Table 'companies' structure:");
+            System.out.println("   id (PK)");
+            System.out.println("   name");
+            System.out.println("   street, city, zip_code, country ← Address fields");
+            System.out.println("   contact_email, contact_phone, company_website ← ContactInfo fields");
+            System.out.println("   (Все в одной таблице!)");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void demonstrateSlide11() {
