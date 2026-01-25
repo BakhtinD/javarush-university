@@ -42,7 +42,94 @@ public class Main {
 
         demonstrateSlide16();
 
+        demonstrateSlide19();
+
         HibernateUtil.shutdown();
+    }
+
+    public static void demonstrateSlide19() {
+        System.out.println("\n=== Слайд 19: Orphan Removal Demo ===");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction transaction = null;
+
+        try {
+            transaction = session.beginTransaction();
+
+            // 1. Создаем геймера с профилем
+            System.out.println("1. Creating gamer with profile...");
+            Gamer gamer = new Gamer("CyberWarrior", "cyber@example.com");
+            GameProfile profile = new GameProfile("avatar1.jpg", 1, 0);
+
+            // Устанавливаем двустороннюю связь
+            gamer.setProfile(profile);
+            profile.setOwner(gamer);
+
+            session.save(gamer);
+            transaction.commit();
+
+            // 2. Показываем, что профиль существует
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            Gamer savedGamer = session.get(Gamer.class, gamer.getId());
+            System.out.println("2. Gamer has profile: " +
+                    (savedGamer.getProfile() != null ? "Yes" : "No"));
+
+            // 3. Создаем новый профиль и заменяем старый
+            System.out.println("3. Replacing old profile with new one...");
+            GameProfile newProfile = new GameProfile("avatar2.jpg", 2, 100);
+            newProfile.setOwner(savedGamer);
+            savedGamer.setProfile(newProfile);
+
+            // Здесь сработает orphanRemoval - старый профиль удалится
+            session.saveOrUpdate(savedGamer);
+            transaction.commit();
+
+            // 4. Проверяем, удалился ли старый профиль
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            Query<GameProfile> query = session.createQuery(
+                    "FROM GameProfile WHERE avatarUrl = :url", GameProfile.class);
+            query.setParameter("url", "avatar1.jpg");
+            List<GameProfile> oldProfiles = query.list();
+
+            System.out.println("4. Old profile still exists: " +
+                    (!oldProfiles.isEmpty() ? "Yes" : "No") +
+                    " (found " + oldProfiles.size() + " profiles)");
+
+            // 5. Устанавливаем профиль в null
+            System.out.println("5. Setting profile to null...");
+            savedGamer = session.get(Gamer.class, gamer.getId());
+            savedGamer.setProfile(null);
+
+            session.saveOrUpdate(savedGamer);
+            transaction.commit();
+
+            // 6. Проверяем, удалился ли новый профиль
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            query = session.createQuery(
+                    "FROM GameProfile WHERE avatarUrl = :url", GameProfile.class);
+            query.setParameter("url", "avatar2.jpg");
+            List<GameProfile> newProfiles = query.list();
+
+            System.out.println("6. New profile still exists: " +
+                    (!newProfiles.isEmpty() ? "Yes" : "No") +
+                    " (found " + newProfiles.size() + " profiles)");
+
+            transaction.commit();
+
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+        } finally {
+            session.close();
+        }
+
+        System.out.println("=== End of Slide 19 Demo ===\n");
     }
 
     private static void demonstrateSlide16() {
