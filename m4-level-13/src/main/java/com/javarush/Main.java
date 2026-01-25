@@ -47,6 +47,133 @@ public class Main {
         HibernateUtil.shutdown();
     }
 
+    public static void demonstrateSlide20() {
+        System.out.println("\n=== Слайд 20: Fetch Types Demo (LAZY vs EAGER) ===");
+
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction transaction = null;
+
+        try {
+            transaction = session.beginTransaction();
+
+            // 1. Создаем данные для демонстрации
+            System.out.println("1. Creating test data...");
+
+            Blog blog = new Blog("Java Programming Blog", "John Doe");
+
+            BlogPost post1 = new BlogPost("Hibernate Basics", "Hibernate is a powerful ORM framework...");
+            BlogPost post2 = new BlogPost("Spring Introduction", "Spring Framework makes Java EE easier...");
+
+            BlogComment comment1 = new BlogComment("Alice", "Great article about Hibernate!");
+            BlogComment comment2 = new BlogComment("Bob", "Thanks for the Spring tutorial.");
+            BlogComment comment3 = new BlogComment("Charlie", "Very helpful, thanks!");
+
+            // Устанавливаем связи
+            blog.addPost(post1);
+            blog.addPost(post2);
+            blog.addComment(comment1);
+            blog.addComment(comment2);
+            blog.addComment(comment3);
+
+            session.save(blog);
+
+            transaction.commit();
+
+            // 2. Демонстрация EAGER загрузки OneToMany
+            System.out.println("\n2. Demonstrating EAGER fetching (Blog -> Posts - fetch = EAGER):");
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            Blog loadedBlog = session.get(Blog.class, blog.getId());
+            System.out.println("   Blog loaded: " + loadedBlog.getTitle());
+
+            // Посты загрузятся сразу (EAGER), даже без явного обращения
+            System.out.println("   Posts count: " + loadedBlog.getPosts().size());
+            System.out.println("   First post title: " + loadedBlog.getPosts().get(0).getTitle());
+
+            // Посмотрим SQL в логах - будет JOIN для posts
+
+            transaction.commit();
+
+            // 3. Демонстрация LAZY загрузки OneToMany
+            System.out.println("\n3. Demonstrating LAZY fetching (Blog -> Comments - fetch = LAZY):");
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            Blog blogForComments = session.get(Blog.class, blog.getId());
+            System.out.println("   Blog loaded: " + blogForComments.getTitle());
+
+            // Комментарии НЕ загружены сразу (LAZY)
+            System.out.println("   Comments initialized: " +
+                    org.hibernate.Hibernate.isInitialized(blogForComments.getComments()));
+
+            // При обращении к комментариям - выполняется отдельный запрос
+            System.out.println("   Comments count: " + blogForComments.getComments().size());
+            System.out.println("   First comment author: " + blogForComments.getComments().get(0).getAuthor());
+
+            transaction.commit();
+
+            // 4. Демонстрация LAZY загрузки ManyToOne
+            System.out.println("\n4. Demonstrating LAZY fetching (BlogPost -> Blog - fetch = LAZY):");
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            BlogPost loadedPost = session.get(BlogPost.class, post1.getId());
+            System.out.println("   Post loaded: " + loadedPost.getTitle());
+
+            // Блог не загружен сразу (LAZY), только прокси
+            System.out.println("   Blog is proxy: " +
+                    (loadedPost.getBlog() instanceof org.hibernate.proxy.HibernateProxy));
+
+            // При обращении к блогу - выполняется отдельный запрос
+            System.out.println("   Blog author: " + loadedPost.getBlog().getAuthor());
+
+            transaction.commit();
+
+            // 5. Демонстрация EAGER загрузки ManyToOne (по умолчанию)
+            System.out.println("\n5. Demonstrating EAGER fetching (BlogComment -> Blog - default for @ManyToOne):");
+            session = HibernateUtil.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            BlogComment loadedComment = session.get(BlogComment.class, comment1.getId());
+            System.out.println("   Comment loaded: " + loadedComment.getText());
+
+            // Блог загружен сразу (EAGER по умолчанию для @ManyToOne)
+            System.out.println("   Blog is proxy: " +
+                    (loadedComment.getBlog() instanceof org.hibernate.proxy.HibernateProxy));
+            System.out.println("   Blog title: " + loadedComment.getBlog().getTitle());
+
+            transaction.commit();
+
+            // 6. Проблема LazyInitializationException
+            System.out.println("\n6. Demonstrating LazyInitializationException risk:");
+            session = HibernateUtil.getSessionFactory().openSession();
+
+            BlogPost postForException = session.get(BlogPost.class, post2.getId());
+            session.close(); // Закрываем сессию
+
+            try {
+                // Попытка доступа к ленивой связи вне сессии
+                System.out.println("   Trying to access blog outside session...");
+                String blogAuthor = postForException.getBlog().getAuthor();
+                System.out.println("   Success: " + blogAuthor);
+            } catch (Exception e) {
+                System.out.println("   Error: " + e.getClass().getSimpleName() +
+                        " - " + e.getMessage());
+            }
+
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+
+        System.out.println("\n=== End of Slide 20 Demo ===");
+    }
+
     public static void demonstrateSlide19() {
         System.out.println("\n=== Слайд 19: Orphan Removal Demo ===");
 

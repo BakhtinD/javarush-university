@@ -98,6 +98,10 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(Gamer.class);
                 metadataSources.addAnnotatedClass(GameProfile.class);
 
+                metadataSources.addAnnotatedClass(Blog.class);
+                metadataSources.addAnnotatedClass(BlogPost.class);
+                metadataSources.addAnnotatedClass(BlogComment.class);
+
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
 
