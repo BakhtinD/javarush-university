@@ -6,6 +6,7 @@ import com.javarush.entity.slide13.Book;
 import com.javarush.entity.slide14.Author;
 import com.javarush.entity.slide14.BookDetail;
 import com.javarush.entity.slide16.BankAccount;
+import com.javarush.entity.slide17.AuditLog;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -62,12 +63,267 @@ public class Main {
         demonstrateSlide15();
 
         demonstrateSlide16();
-        
+
+        demonstrateSlide17();
+
+        // demonstrateSlide19();
+
         HibernateUtil.shutdown();
     }
 
 
     // В класс Main добавляем метод:
+    public static void demonstrateSlide17() {
+        System.out.println("\n=== Demo for Slide 17: Hibernate Transaction Interface ===");
+        System.out.println("Exploring all methods of Transaction interface");
+
+        // Подготовка тестовых данных
+        prepareAuditLogData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            System.out.println("\n--- 1. Demonstration: begin(), commit(), rollback() ---");
+            demoBasicTransactionMethods(session);
+
+            System.out.println("\n--- 2. Demonstration: isActive(), wasCommitted(), wasRolledBack() ---");
+            demoTransactionStateMethods(session);
+
+            System.out.println("\n--- 3. Demonstration: setTimeout() ---");
+            demoTransactionTimeoutMethod(session);
+
+            System.out.println("\n--- 4. Demonstration: Full Transaction Lifecycle ---");
+            demoFullTransactionLifecycle(session);
+
+            // Показываем все записи аудита
+            displayAllAuditLogs(session);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Демонстрация 1: Основные методы begin(), commit(), rollback()
+    private static void demoBasicTransactionMethods(Session session) {
+        System.out.println("\nAnalog: Thread creation vs Thread.start()");
+        System.out.println("Transaction object creation vs Transaction.begin()");
+
+        // Способ 1: Получение транзакции без запуска
+        Transaction tx1 = session.getTransaction();
+        System.out.println("\n1. session.getTransaction() - transaction object created");
+        System.out.println("   tx1.isActive() = " + tx1.isActive() + " (false - not started yet)");
+
+        // Теперь запускаем транзакцию
+        tx1.begin();
+        System.out.println("2. tx1.begin() - transaction STARTED");
+        System.out.println("   tx1.isActive() = " + tx1.isActive() + " (true - now active)");
+
+        // Создаем запись в логе
+        AuditLog log1 = new AuditLog();
+        log1.setActionType("TRANSACTION_TEST");
+        log1.setDescription("Testing begin() method");
+        log1.setCreatedAt(LocalDateTime.now());
+        log1.setTransactionStatus("STARTED");
+
+        session.save(log1);
+        System.out.println("3. Audit log record created (in memory, not yet in DB)");
+
+        // Коммитим транзакцию
+        tx1.commit();
+        System.out.println("4. tx1.commit() - transaction COMMITTED");
+        System.out.println("   tx1.isActive() = " + tx1.isActive() + " (false - completed)");
+
+        // Демонстрация rollback()
+        System.out.println("\n--- Demonstrating rollback() ---");
+        Transaction tx2 = session.beginTransaction();
+        System.out.println("5. New transaction started via session.beginTransaction()");
+
+        AuditLog log2 = new AuditLog();
+        log2.setActionType("TRANSACTION_TEST");
+        log2.setDescription("This will be rolled back");
+        log2.setCreatedAt(LocalDateTime.now());
+        log2.setTransactionStatus("WILL_ROLLBACK");
+
+        session.save(log2);
+        System.out.println("6. Second audit log created");
+
+        // Имитируем ошибку и откатываем
+        tx2.rollback();
+        System.out.println("7. tx2.rollback() - transaction ROLLED BACK");
+        System.out.println("   tx2.isActive() = " + tx2.isActive() + " (false - completed)");
+    }
+
+    // Демонстрация 2: Методы проверки состояния
+    private static void demoTransactionStateMethods(Session session) {
+        System.out.println("\nTesting transaction state methods:");
+
+        Transaction tx = session.beginTransaction();
+        System.out.println("1. Transaction started");
+
+        System.out.println("2. Checking initial state:");
+        System.out.println("   isActive() = " + tx.isActive());
+
+        // Создаем тестовую запись
+        AuditLog log = new AuditLog();
+        log.setActionType("STATE_TEST");
+        log.setDescription("Testing transaction state methods");
+        log.setCreatedAt(LocalDateTime.now());
+        log.setTransactionStatus("ACTIVE");
+
+        session.save(log);
+
+        // Показываем состояние перед коммитом
+        System.out.println("\n3. Before commit:");
+        System.out.println("   isActive() = " + tx.isActive());
+
+        tx.commit();
+
+        System.out.println("\n4. After commit:");
+        System.out.println("   isActive() = " + tx.isActive());
+
+        // Попытка использовать завершенную транзакцию
+        System.out.println("\n5. Trying to use completed transaction (should fail):");
+        try {
+            tx.begin(); // Попытка перезапустить завершенную транзакцию
+            System.out.println("   ERROR: Should not reach here!");
+        } catch (Exception e) {
+            System.out.println("   Expected exception: " + e.getClass().getSimpleName());
+            System.out.println("   Message: " + e.getMessage());
+        }
+    }
+
+    // Демонстрация 3: Метод setTimeout()
+    private static void demoTransactionTimeoutMethod(Session session) {
+        System.out.println("\nDemonstrating setTimeout() method:");
+
+        Transaction tx = session.beginTransaction();
+
+        // Устанавливаем таймаут 2 секунды
+        tx.setTimeout(2);
+        System.out.println("1. Transaction started with 2-second timeout");
+        System.out.println("   Timeout set via tx.setTimeout(2)");
+
+        AuditLog log = new AuditLog();
+        log.setActionType("TIMEOUT_TEST");
+        log.setDescription("Testing transaction timeout");
+        log.setCreatedAt(LocalDateTime.now());
+        log.setTransactionStatus("TIMED_OUT");
+
+        session.save(log);
+
+        System.out.println("2. Record created, waiting 3 seconds (exceeds timeout)...");
+
+        try {
+            // Имитируем долгую операцию
+            Thread.sleep(3000);
+
+            // Попытка коммита после таймаута
+            tx.commit();
+            System.out.println("3. Commit succeeded (unexpected)");
+        } catch (Exception e) {
+            System.out.println("3. Transaction failed due to timeout: " + e.getMessage());
+
+            // Проверяем состояние
+            System.out.println("   isActive() = " + tx.isActive());
+        }
+    }
+
+    // Демонстрация 4: Полный жизненный цикл транзакции
+    private static void demoFullTransactionLifecycle(Session session) {
+        System.out.println("\nFull Transaction Lifecycle Demonstration:");
+
+        System.out.println("Phase 1: PREPARATION");
+        System.out.println("   - Session is open");
+        System.out.println("   - No active transaction");
+
+        // Начало транзакции
+        Transaction tx = session.beginTransaction();
+        System.out.println("\nPhase 2: STARTED");
+        System.out.println("   - tx.begin() called");
+        System.out.println("   - isActive() = " + tx.isActive());
+        System.out.println("   - Database transaction actually begins");
+
+        // Работа внутри транзакции
+        AuditLog log = new AuditLog();
+        log.setActionType("LIFECYCLE_TEST");
+        log.setDescription("Full transaction lifecycle demonstration");
+        log.setCreatedAt(LocalDateTime.now());
+        log.setTransactionStatus("IN_PROGRESS");
+
+        session.save(log);
+        System.out.println("\nPhase 3: WORK IN PROGRESS");
+        System.out.println("   - Entities modified/saved");
+        System.out.println("   - Changes tracked by Hibernate");
+        System.out.println("   - Not yet persisted to database");
+
+        // Проверяем, что транзакция все еще активна
+        System.out.println("   - isActive() = " + tx.isActive());
+
+        // Коммит транзакции
+        tx.commit();
+        System.out.println("\nPhase 4: COMMITTED");
+        System.out.println("   - tx.commit() called");
+        System.out.println("   - All changes flushed to database");
+        System.out.println("   - Transaction resources released");
+        System.out.println("   - isActive() = " + tx.isActive());
+
+        System.out.println("\nPhase 5: COMPLETED");
+        System.out.println("   - Transaction object exists but cannot be reused");
+        System.out.println("   - New transaction requires new begin() call");
+    }
+
+    // Вспомогательный метод: отображение всех записей аудита
+    private static void displayAllAuditLogs(Session session) {
+        System.out.println("\n--- All Audit Log Records (from database) ---");
+
+        List<AuditLog> logs = session.createQuery(
+                "FROM AuditLog ORDER BY createdAt", AuditLog.class
+        ).list();
+
+        if (logs.isEmpty()) {
+            System.out.println("No audit logs found (all transactions were rolled back)");
+            return;
+        }
+
+        System.out.println("=".repeat(100));
+        System.out.println(String.format("%-5s | %-20s | %-40s | %-20s | %-15s",
+                "ID", "Action", "Description", "Created", "Status"));
+        System.out.println("-".repeat(100));
+
+        for (AuditLog log : logs) {
+            System.out.println(String.format("%-5d | %-20s | %-40s | %-20s | %-15s",
+                    log.getId(),
+                    log.getActionType(),
+                    log.getDescription().length() > 40 ?
+                            log.getDescription().substring(0, 37) + "..." : log.getDescription(),
+                    log.getCreatedAt().toLocalTime().toString(),
+                    log.getTransactionStatus()
+            ));
+        }
+        System.out.println("Total records: " + logs.size());
+        System.out.println("Note: Records with 'ROLLED_BACK' status don't appear (not in DB)");
+    }
+
+    private static void prepareAuditLogData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from AuditLog").executeUpdate();
+
+            // Создание начальных данных
+            AuditLog initialLog = new AuditLog();
+            initialLog.setActionType("INITIAL");
+            initialLog.setDescription("Initial audit log entry");
+            initialLog.setCreatedAt(LocalDateTime.now().minusHours(1));
+            initialLog.setTransactionStatus("COMMITTED");
+
+            session.save(initialLog);
+
+            transaction.commit();
+            System.out.println("Initial audit log data prepared.");
+        }
+    }
+
     public static void demonstrateSlide16() {
         System.out.println("\n=== Demo for Slide 16: Transactions in Hibernate ===");
         System.out.println("Demonstrating JDBC transactions with commit/rollback scenarios");
