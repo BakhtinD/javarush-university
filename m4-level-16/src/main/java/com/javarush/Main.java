@@ -4,6 +4,7 @@ import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
 import com.javarush.entity.slide6.Developer;
+import com.javarush.entity.slide7.Account;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -12,7 +13,9 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Predicate;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class Main {
@@ -20,10 +23,264 @@ public class Main {
     public static void main(String[] args) {
 
         demonstrateSlide3();
+
         demonstrateSlide4();
+
         demonstrateSlide5();
+
         demonstrateSlide6();
+
+        demonstrateSlide7();
+
         HibernateUtil.shutdown();
+    }
+
+    public static void demonstrateSlide7() {
+        System.out.println("\n=== Demo for Slide 7: All Criteria API Comparison Operators ===");
+        System.out.println("Demonstrating all operators from the comparison table");
+
+        // Подготовка тестовых данных
+        prepareAccountData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 1: a < b  -> builder.lt(a, b)");
+            System.out.println("Query: Find accounts with balance < 5000");
+            demoLtOperator(session, builder);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 2: a > b  -> builder.gt(a, b)");
+            System.out.println("Query: Find accounts with credit limit > 10000");
+            demoGtOperator(session, builder);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 3: a OR b  -> builder.or(a, b)");
+            System.out.println("Query: Find accounts with status = 'ACTIVE' OR balance > 7000");
+            demoOrOperator(session, builder);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 4: a AND b  -> builder.and(a, b)");
+            System.out.println("Query: Find accounts with status = 'ACTIVE' AND balance > 3000");
+            demoAndOperator(session, builder);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 5: a LIKE b  -> builder.like(a, b)");
+            System.out.println("Query: Find accounts with email containing 'gmail.com'");
+            demoLikeOperator(session, builder);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 6: a BETWEEN (c, d)  -> builder.between(a, c, d)");
+            System.out.println("Query: Find accounts with balance between 2000 and 8000");
+            demoBetweenOperator(session, builder);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 7: a IS NULL  -> builder.isNull(a)");
+            System.out.println("Query: Find accounts where accountHolder is NULL");
+            demoIsNullOperator(session, builder);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("OPERATOR 8: a IS NOT NULL  -> builder.isNotNull(a)");
+            System.out.println("Query: Find accounts where notes is NOT NULL");
+            demoIsNotNullOperator(session, builder);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 1. lt() - Less Than
+    private static void demoLtOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        query.select(root)
+                .where(builder.lt(root.get("balance"), new BigDecimal("5000.00")));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Balance: $" + a.getBalance()));
+    }
+
+    // 2. gt() - Greater Than
+    private static void demoGtOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        query.select(root)
+                .where(builder.gt(root.get("creditLimit"), new BigDecimal("10000.00")));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Limit: $" + a.getCreditLimit()));
+    }
+
+    // 3. or() - Logical OR
+    private static void demoOrOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        Predicate activeStatus = builder.equal(root.get("status"), "ACTIVE");
+        Predicate highBalance = builder.gt(root.get("balance"), new BigDecimal("7000.00"));
+
+        query.select(root)
+                .where(builder.or(activeStatus, highBalance));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Status: " + a.getStatus() +
+                ", Balance: $" + a.getBalance()));
+    }
+
+    // 4. and() - Logical AND
+    private static void demoAndOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        Predicate activeStatus = builder.equal(root.get("status"), "ACTIVE");
+        Predicate minBalance = builder.gt(root.get("balance"), new BigDecimal("3000.00"));
+
+        query.select(root)
+                .where(builder.and(activeStatus, minBalance));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Status: " + a.getStatus() +
+                ", Balance: $" + a.getBalance()));
+    }
+
+    // 5. like() - Pattern Matching
+    private static void demoLikeOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        query.select(root)
+                .where(builder.like(root.get("email"), "%gmail.com%"));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Email: " + a.getEmail()));
+    }
+
+    // 6. between() - Range Check
+    private static void demoBetweenOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        query.select(root)
+                .where(builder.between(
+                        root.get("balance"),
+                        new BigDecimal("2000.00"),
+                        new BigDecimal("8000.00")
+                ));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Balance: $" + a.getBalance()));
+    }
+
+    // 7. isNull() - NULL Check
+    private static void demoIsNullOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        query.select(root)
+                .where(builder.isNull(root.get("accountHolder")));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Holder: " + (a.getAccountHolder() == null ? "NULL" : a.getAccountHolder())));
+    }
+
+    // 8. isNotNull() - NOT NULL Check
+    private static void demoIsNotNullOperator(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<Account> query = builder.createQuery(Account.class);
+        Root<Account> root = query.from(Account.class);
+
+        query.select(root)
+                .where(builder.isNotNull(root.get("notes")));
+
+        List<Account> results = session.createQuery(query).getResultList();
+        System.out.println("Result: " + results.size() + " account(s) found");
+        results.forEach(a -> System.out.println("  - #" + a.getAccountNumber() +
+                ", Notes: \"" + a.getNotes() + "\""));
+    }
+
+    private static void prepareAccountData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from Account").executeUpdate();
+
+            // Создание тестовых данных
+            Account a1 = new Account();
+            a1.setAccountNumber("ACC001");
+            a1.setAccountHolder("John Smith");
+            a1.setBalance(new BigDecimal("4500.00"));
+            a1.setCreditLimit(new BigDecimal("15000.00"));
+            a1.setStatus("ACTIVE");
+            a1.setEmail("john@gmail.com");
+            a1.setLastActivity(LocalDateTime.now().minusDays(2));
+            a1.setNotes("Preferred customer");
+
+            Account a2 = new Account();
+            a2.setAccountNumber("ACC002");
+            a2.setAccountHolder("Emma Wilson");
+            a2.setBalance(new BigDecimal("12000.00"));
+            a2.setCreditLimit(new BigDecimal("8000.00"));
+            a2.setStatus("INACTIVE");
+            a2.setEmail("emma@yahoo.com");
+            a2.setLastActivity(LocalDateTime.now().minusMonths(3));
+            a2.setNotes(null);
+
+            Account a3 = new Account();
+            a3.setAccountNumber("ACC003");
+            a3.setAccountHolder(null); // NULL holder
+            a3.setBalance(new BigDecimal("2500.00"));
+            a3.setCreditLimit(new BigDecimal("5000.00"));
+            a3.setStatus("ACTIVE");
+            a3.setEmail("corporate@company.com");
+            a3.setLastActivity(LocalDateTime.now().minusDays(10));
+            a3.setNotes("Corporate account");
+
+            Account a4 = new Account();
+            a4.setAccountNumber("ACC004");
+            a4.setAccountHolder("Alex Johnson");
+            a4.setBalance(new BigDecimal("7500.00"));
+            a4.setCreditLimit(new BigDecimal("12000.00"));
+            a4.setStatus("BLOCKED");
+            a4.setEmail("alex@gmail.com");
+            a4.setLastActivity(LocalDateTime.now().minusDays(30));
+            a4.setNotes("Under review");
+
+            Account a5 = new Account();
+            a5.setAccountNumber("ACC005");
+            a5.setAccountHolder("Michael Brown");
+            a5.setBalance(new BigDecimal("3000.00"));
+            a5.setCreditLimit(new BigDecimal("6000.00"));
+            a5.setStatus("ACTIVE");
+            a5.setEmail("michael@outlook.com");
+            a5.setLastActivity(LocalDateTime.now().minusDays(1));
+            a5.setNotes(null);
+
+            session.save(a1);
+            session.save(a2);
+            session.save(a3);
+            session.save(a4);
+            session.save(a5);
+
+            transaction.commit();
+            System.out.println("Test data: 5 accounts inserted with varied data for demos.");
+        }
     }
 
     public static void demonstrateSlide6() {
