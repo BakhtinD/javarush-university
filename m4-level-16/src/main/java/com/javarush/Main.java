@@ -5,6 +5,7 @@ import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
 import com.javarush.entity.slide6.Developer;
 import com.javarush.entity.slide7.Account;
+import com.javarush.entity.slide8.Project;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -32,7 +33,217 @@ public class Main {
 
         demonstrateSlide7();
 
+        demonstrateSlide8();
+
         HibernateUtil.shutdown();
+    }
+
+    public static void demonstrateSlide8() {
+        System.out.println("\n=== Demo for Slide 8: Sorting with Criteria API ===");
+        System.out.println("Demonstrating ORDER BY with multiple fields");
+
+        // Подготовка тестовых данных
+        prepareProjectData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+
+            System.out.println("\nQuery: Find ACTIVE projects, sorted by:");
+            System.out.println("  1. Priority ASC (highest priority first)");
+            System.out.println("  2. Budget DESC (largest budget first)");
+            System.out.println("  3. Team Size ASC (smallest teams first)");
+
+            // 1. Создаем CriteriaQuery
+            CriteriaQuery<Project> query = builder.createQuery(Project.class);
+
+            // 2. Определяем Root (FROM часть)
+            Root<Project> root = query.from(Project.class);
+
+            // 3. Задаем SELECT
+            query.select(root);
+
+            // 4. Добавляем WHERE условие (только активные проекты)
+            // Используем CriteriaBuilder для создания условия
+            Predicate activeStatus = builder.equal(root.get("status"), "ACTIVE");
+            query.where(activeStatus);
+
+            // 5. Добавляем ORDER BY с несколькими полями
+            // Используем CriteriaBuilder для создания условий сортировки
+            javax.persistence.criteria.Order priorityOrder = builder.asc(root.get("priority"));
+            javax.persistence.criteria.Order budgetOrder = builder.desc(root.get("budget"));
+            javax.persistence.criteria.Order teamSizeOrder = builder.asc(root.get("teamSize"));
+
+            // Комбинируем сортировки в правильном порядке приоритета
+            query.orderBy(priorityOrder, budgetOrder, teamSizeOrder);
+
+            System.out.println("\n--- Building the query step by step ---");
+            System.out.println("1. CriteriaBuilder builder = session.getCriteriaBuilder();");
+            System.out.println("2. CriteriaQuery<Project> query = builder.createQuery(Project.class);");
+            System.out.println("3. Root<Project> root = query.from(Project.class);");
+            System.out.println("4. query.select(root);");
+            System.out.println("5. Predicate activeStatus = builder.equal(root.get(\"status\"), \"ACTIVE\");");
+            System.out.println("6. query.where(activeStatus);");
+            System.out.println("7. Order priorityOrder = builder.asc(root.get(\"priority\"));");
+            System.out.println("8. Order budgetOrder = builder.desc(root.get(\"budget\"));");
+            System.out.println("9. Order teamSizeOrder = builder.asc(root.get(\"teamSize\"));");
+            System.out.println("10. query.orderBy(priorityOrder, budgetOrder, teamSizeOrder);");
+
+            // 6. Выполняем запрос
+            List<Project> results = session.createQuery(query).getResultList();
+
+            // 7. Выводим результаты с указанием порядка сортировки
+            System.out.println("\n--- Results (Sorted) ---");
+            System.out.println("Found " + results.size() + " active project(s):");
+            System.out.println("=".repeat(90));
+            System.out.println(String.format("%-20s | %-12s | %-10s | %-10s | %-12s | %-10s",
+                    "Project Name", "Client", "Budget", "Team Size", "Start Date", "Priority"));
+            System.out.println("-".repeat(90));
+
+            for (Project project : results) {
+                System.out.println(String.format("%-20s | %-12s | $%-9.0f | %-10d | %-12s | %-10d",
+                        project.getProjectName(),
+                        project.getClientName(),
+                        project.getBudget(),
+                        project.getTeamSize(),
+                        project.getStartDate(),
+                        project.getPriority()
+                ));
+            }
+
+            // 8. Демонстрация SQL-подобного представления
+            System.out.println("\n--- Equivalent SQL ---");
+            System.out.println("SELECT * FROM slide8_projects");
+            System.out.println("WHERE status = 'ACTIVE'");
+            System.out.println("ORDER BY priority ASC, budget DESC, team_size ASC");
+
+            // 9. Дополнительный пример: сортировка с фильтрацией по дате
+            System.out.println("\n\n--- Additional Example: Complex Filtering with Sorting ---");
+            System.out.println("Query: Projects started after 2023-01-01, sorted by end date (NULLs last)");
+
+            CriteriaQuery<Project> query2 = builder.createQuery(Project.class);
+            Root<Project> root2 = query2.from(Project.class);
+
+            // Условия WHERE
+            Predicate afterDate = builder.greaterThan(root2.get("startDate"), LocalDate.of(2023, 1, 1));
+            Predicate notCancelled = builder.notEqual(root2.get("status"), "CANCELLED");
+            Predicate whereCondition = builder.and(afterDate, notCancelled);
+
+            // Сортировка: по end_date (NULL last), затем по project_name
+            javax.persistence.criteria.Order endDateOrder = builder.desc(root2.get("endDate"));
+            javax.persistence.criteria.Order nameOrder = builder.asc(root2.get("projectName"));
+
+            query2.select(root2)
+                    .where(whereCondition)
+                    .orderBy(endDateOrder, nameOrder);
+
+            List<Project> results2 = session.createQuery(query2).getResultList();
+
+            System.out.println("\nFound " + results2.size() + " project(s):");
+            for (Project project : results2) {
+                String endDateStr = project.getEndDate() != null ?
+                        project.getEndDate().toString() : "NULL (ongoing)";
+                System.out.println(String.format("  - %-15s | Start: %s | End: %-15s | Status: %s",
+                        project.getProjectName(),
+                        project.getStartDate(),
+                        endDateStr,
+                        project.getStatus()
+                ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void prepareProjectData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from Project").executeUpdate();
+
+            // Создание тестовых данных
+            Project p1 = new Project();
+            p1.setProjectName("E-Commerce Platform");
+            p1.setClientName("RetailCorp");
+            p1.setBudget(new BigDecimal("250000.00"));
+            p1.setTeamSize(8);
+            p1.setStartDate(LocalDate.of(2023, 3, 15));
+            p1.setEndDate(LocalDate.of(2024, 2, 28));
+            p1.setStatus("ACTIVE");
+            p1.setPriority(2);
+
+            Project p2 = new Project();
+            p2.setProjectName("Mobile Banking App");
+            p2.setClientName("FinanceBank");
+            p2.setBudget(new BigDecimal("180000.00"));
+            p2.setTeamSize(5);
+            p2.setStartDate(LocalDate.of(2023, 6, 1));
+            p2.setEndDate(null); // NULL end date (ongoing)
+            p2.setStatus("ACTIVE");
+            p2.setPriority(1); // Highest priority
+
+            Project p3 = new Project();
+            p3.setProjectName("Inventory System");
+            p3.setClientName("Warehouse Ltd");
+            p3.setBudget(new BigDecimal("95000.00"));
+            p3.setTeamSize(3);
+            p3.setStartDate(LocalDate.of(2023, 1, 10));
+            p3.setEndDate(LocalDate.of(2023, 10, 31));
+            p3.setStatus("COMPLETED");
+            p3.setPriority(3);
+
+            Project p4 = new Project();
+            p4.setProjectName("CRM Implementation");
+            p4.setClientName("SalesForce Inc");
+            p4.setBudget(new BigDecimal("320000.00"));
+            p4.setTeamSize(12);
+            p4.setStartDate(LocalDate.of(2022, 11, 1));
+            p4.setEndDate(LocalDate.of(2024, 5, 30));
+            p4.setStatus("ACTIVE");
+            p4.setPriority(2);
+
+            Project p5 = new Project();
+            p5.setProjectName("Data Analytics Dashboard");
+            p5.setClientName("TechAnalytics");
+            p5.setBudget(new BigDecimal("145000.00"));
+            p5.setTeamSize(6);
+            p5.setStartDate(LocalDate.of(2023, 8, 20));
+            p5.setEndDate(LocalDate.of(2024, 4, 15));
+            p5.setStatus("ACTIVE");
+            p5.setPriority(4);
+
+            Project p6 = new Project();
+            p6.setProjectName("Legacy Migration");
+            p6.setClientName("OldSystems Corp");
+            p6.setBudget(new BigDecimal("275000.00"));
+            p6.setTeamSize(10);
+            p6.setStartDate(LocalDate.of(2022, 9, 1));
+            p6.setEndDate(null); // NULL end date
+            p6.setStatus("CANCELLED");
+            p6.setPriority(5);
+
+            Project p7 = new Project();
+            p7.setProjectName("AI Chatbot");
+            p7.setClientName("SupportSolutions");
+            p7.setBudget(new BigDecimal("210000.00"));
+            p7.setTeamSize(7);
+            p7.setStartDate(LocalDate.of(2023, 2, 28));
+            p7.setEndDate(LocalDate.of(2023, 12, 15));
+            p7.setStatus("COMPLETED");
+            p7.setPriority(3);
+
+            session.save(p1);
+            session.save(p2);
+            session.save(p3);
+            session.save(p4);
+            session.save(p5);
+            session.save(p6);
+            session.save(p7);
+
+            transaction.commit();
+            System.out.println("Test data: 7 projects inserted with varied statuses and dates.");
+        }
     }
 
     public static void demonstrateSlide7() {
