@@ -15,6 +15,16 @@ import com.javarush.entity.slide9.SalesRecord;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import org.hibernate.transform.ResultTransformer;
+import org.hibernate.transform.Transformers;
+
+import com.javarush.entity.slide15.UserOrder;
+import com.javarush.dto.slide15.UserStatsDTO;
+import com.javarush.dto.slide15.DenormalizedReportDTO;
+import org.hibernate.transform.ResultTransformer;
+import org.hibernate.transform.Transformers;
+import java.time.LocalDate;
+import java.math.BigDecimal;
 
 import javax.persistence.criteria.*;
 import java.math.BigDecimal;
@@ -47,10 +57,275 @@ public class Main {
         demonstrateSlide13();
 
         demonstrateSlide14();
+
+        demonstrateSlide15();
         
         HibernateUtil.shutdown();
     }
 
+    // В класс Main добавляем метод:
+    public static void demonstrateSlide15() {
+        System.out.println("\n=== Demo for Slide 15: DTO Mapping with NativeQuery ===");
+        System.out.println("Mapping SQL results to plain Java classes (DTOs) without JPA annotations");
+
+        // Подготовка тестовых данных
+        prepareUserOrderData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            System.out.println("\n--- Example 1: Simple DTO mapping (as described on slide) ---");
+            System.out.println("Selecting only 2 columns (id and name) from large table");
+            demoSimpleDtoMapping(session);
+
+            System.out.println("\n--- Example 2: Complex DTO with aggregations ---");
+            System.out.println("User statistics DTO with calculated fields");
+            demoComplexDtoMapping(session);
+
+            System.out.println("\n--- Example 3: Denormalized data mapping ---");
+            System.out.println("DTO from complex denormalized report table");
+            demoDenormalizedDtoMapping(session);
+
+            System.out.println("\n--- Example 4: Comparison with Entity mapping ---");
+            compareDtoVsEntityMapping(session);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Пример 1: Простой DTO - только 2 колонки из большой таблицы
+    private static void demoSimpleDtoMapping(Session session) {
+        System.out.println("\nImagine we have a huge table with 50+ columns");
+        System.out.println("But we only need user_id and user_name");
+
+        // Создаем ResultTransformer для маппинга на DTO
+        ResultTransformer transformer = new ResultTransformer() {
+            @Override
+            public Object transformTuple(Object[] tuple, String[] aliases) {
+                // Создаем простой объект для хранения двух полей
+                return new Object() {
+                    public Long userId = (Long) tuple[0];
+                    public String userName = (String) tuple[1];
+
+                    @Override
+                    public String toString() {
+                        return "UserDTO{userId=" + userId + ", userName='" + userName + "'}";
+                    }
+                };
+            }
+
+            @Override
+            public List transformList(List collection) {
+                return collection;
+            }
+        };
+
+        // Нативный запрос, выбирающий только 2 колонки
+        List<Object> userDtos = session.createNativeQuery(
+                        "SELECT DISTINCT user_id, user_name " +
+                                "FROM slide15_user_orders " +
+                                "ORDER BY user_name"
+                )
+                .setResultTransformer(transformer)
+                .list();
+
+        System.out.println("\nSimple DTO results (only 2 columns from big table):");
+        for (Object dto : userDtos) {
+            System.out.println("  " + dto);
+        }
+    }
+
+    // Пример 2: Сложный DTO с агрегациями
+    private static void demoComplexDtoMapping(Session session) {
+        System.out.println("\nComplex DTO with aggregated user statistics");
+        System.out.println("Note: column names in SQL MUST match DTO field names");
+
+        // Используем ResultTransformer для маппинга на UserStatsDTO
+        List<com.javarush.dto.slide15.UserStatsDTO> userStats = session.createNativeQuery(
+                        "SELECT " +
+                                "  user_id as userId, " +
+                                "  MAX(user_name) as userName, " +
+                                "  MAX(user_email) as userEmail, " +
+                                "  COUNT(*) as totalOrders, " +
+                                "  SUM(order_amount) as totalSpent, " +
+                                "  MAX(order_date) as lastOrderDate, " +
+                                "  (SELECT product_category FROM slide15_user_orders sub " +
+                                "   WHERE sub.user_id = main.user_id " +
+                                "   GROUP BY product_category ORDER BY COUNT(*) DESC LIMIT 1) as mostPurchasedCategory " +
+                                "FROM slide15_user_orders main " +
+                                "GROUP BY user_id " +
+                                "ORDER BY totalSpent DESC"
+                )
+                .setResultTransformer(Transformers.aliasToBean(com.javarush.dto.slide15.UserStatsDTO.class))
+                .list();
+
+        System.out.println("\nUser Statistics DTOs:");
+        System.out.println("=".repeat(100));
+        System.out.println(String.format("%-8s | %-15s | %-25s | %-12s | %-12s | %-12s | %-20s",
+                "User ID", "Name", "Email", "Total Orders", "Total Spent", "Last Order", "Top Category"));
+        System.out.println("-".repeat(100));
+
+        for (com.javarush.dto.slide15.UserStatsDTO dto : userStats) {
+            System.out.println(String.format("%-8d | %-15s | %-25s | %-12d | $%-11.2f | %-12s | %-20s",
+                    dto.getUserId(),
+                    dto.getUserName(),
+                    dto.getUserEmail(),
+                    dto.getTotalOrders(),
+                    dto.getTotalSpent(),
+                    dto.getLastOrderDate(),
+                    dto.getMostPurchasedCategory()
+            ));
+        }
+    }
+
+    // Пример 3: DTO из денормализованной таблицы
+    private static void demoDenormalizedDtoMapping(Session session) {
+        System.out.println("\nDTO from denormalized report table (read-only external database)");
+
+        // Имитируем запрос к внешней денормализованной таблице
+        List<com.javarush.dto.slide15.DenormalizedReportDTO> reports = session.createNativeQuery(
+                        "SELECT " +
+                                "  'Engineering' as departmentName, " +
+                                "  'John Manager' as managerName, " +
+                                "  25 as employeeCount, " +
+                                "  2500000.00 as totalSalary, " +
+                                "  100000.00 as avgSalary, " +
+                                "  150000.00 as maxSalary, " +
+                                "  12 as projectsActive, " +
+                                "  8 as projectsCompleted " +
+                                "UNION ALL " +
+                                "SELECT " +
+                                "  'Marketing', " +
+                                "  'Sarah Director', " +
+                                "  15, " +
+                                "  1200000.00, " +
+                                "  80000.00, " +
+                                "  110000.00, " +
+                                "  5, " +
+                                "  3"
+                )
+                .setResultTransformer(Transformers.aliasToBean(com.javarush.dto.slide15.DenormalizedReportDTO.class))
+                .list();
+
+        System.out.println("\nDenormalized Report DTOs:");
+        System.out.println("=".repeat(90));
+        for (DenormalizedReportDTO report : reports) {
+            System.out.println(String.format("Department: %s", report.getDepartmentName()));
+            System.out.println(String.format("  Manager: %s, Employees: %d",
+                    report.getManagerName(), report.getEmployeeCount()));
+            System.out.println(String.format("  Salaries: Total=$%,.2f, Avg=$%,.2f, Max=$%,.2f",
+                    report.getTotalSalary(), report.getAvgSalary(), report.getMaxSalary()));
+            System.out.println(String.format("  Projects: Active=%d, Completed=%d",
+                    report.getProjectsActive(), report.getProjectsCompleted()));
+            System.out.println("-".repeat(90));
+        }
+    }
+
+    // Пример 4: Сравнение DTO и Entity маппинга
+    private static void compareDtoVsEntityMapping(Session session) {
+        System.out.println("\n--- Comparison: DTO vs Entity Mapping ---");
+
+        System.out.println("\n1. Entity Mapping (full UserOrder objects):");
+        List<UserOrder> entities = session.createQuery(
+                "FROM UserOrder u WHERE u.orderDate >= '2023-06-01'", UserOrder.class
+        ).list();
+
+        System.out.println("   Loaded " + entities.size() + " full UserOrder entities");
+        System.out.println("   Each entity has 7 fields, managed by Hibernate");
+        System.out.println("   Hibernate tracks changes, supports lazy loading, caching");
+
+        System.out.println("\n2. DTO Mapping (only needed data):");
+        List<Object[]> dtos = session.createNativeQuery(
+                "SELECT user_id, user_name, SUM(order_amount) as total " +
+                        "FROM slide15_user_orders " +
+                        "WHERE order_date >= '2023-06-01' " +
+                        "GROUP BY user_id, user_name"
+        ).list();
+
+        System.out.println("   Loaded " + dtos.size() + " DTO rows (arrays)");
+        System.out.println("   Each row has only 3 values (not full objects)");
+        System.out.println("   No Hibernate management - just plain data");
+        System.out.println("   Less memory, faster for read-only scenarios");
+    }
+
+    private static void prepareUserOrderData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from UserOrder").executeUpdate();
+
+            // Создание тестовых данных
+            LocalDate baseDate = LocalDate.of(2023, 1, 1);
+
+            // Пользователь 1: Много заказов в разных категориях
+            UserOrder o1 = new UserOrder();
+            o1.setUserId(1L);
+            o1.setUserName("John Smith");
+            o1.setUserEmail("john@email.com");
+            o1.setOrderAmount(new BigDecimal("150.00"));
+            o1.setOrderDate(baseDate.plusDays(10));
+            o1.setProductCategory("ELECTRONICS");
+            o1.setPaymentMethod("CREDIT_CARD");
+
+            UserOrder o2 = new UserOrder();
+            o2.setUserId(1L);
+            o2.setUserName("John Smith");
+            o2.setUserEmail("john@email.com");
+            o2.setOrderAmount(new BigDecimal("75.50"));
+            o2.setOrderDate(baseDate.plusMonths(1));
+            o2.setProductCategory("BOOKS");
+            o2.setPaymentMethod("PAYPAL");
+
+            UserOrder o3 = new UserOrder();
+            o3.setUserId(1L);
+            o3.setUserName("John Smith");
+            o3.setUserEmail("john@email.com");
+            o3.setOrderAmount(new BigDecimal("299.99"));
+            o3.setOrderDate(baseDate.plusMonths(2));
+            o3.setProductCategory("ELECTRONICS");
+            o3.setPaymentMethod("CREDIT_CARD");
+
+            // Пользователь 2: Меньше заказов, но дорогие
+            UserOrder o4 = new UserOrder();
+            o4.setUserId(2L);
+            o4.setUserName("Emma Wilson");
+            o4.setUserEmail("emma@email.com");
+            o4.setOrderAmount(new BigDecimal("1200.00"));
+            o4.setOrderDate(baseDate.plusDays(15));
+            o4.setProductCategory("FURNITURE");
+            o4.setPaymentMethod("BANK_TRANSFER");
+
+            UserOrder o5 = new UserOrder();
+            o5.setUserId(2L);
+            o5.setUserName("Emma Wilson");
+            o5.setUserEmail("emma@email.com");
+            o5.setOrderAmount(new BigDecimal("450.00"));
+            o5.setOrderDate(baseDate.plusMonths(3));
+            o5.setProductCategory("CLOTHING");
+            o5.setPaymentMethod("CREDIT_CARD");
+
+            // Пользователь 3: Старые заказы
+            UserOrder o6 = new UserOrder();
+            o6.setUserId(3L);
+            o6.setUserName("Alex Johnson");
+            o6.setUserEmail("alex@email.com");
+            o6.setOrderAmount(new BigDecimal("89.99"));
+            o6.setOrderDate(LocalDate.of(2022, 11, 5));
+            o6.setProductCategory("BOOKS");
+            o6.setPaymentMethod("PAYPAL");
+
+            session.save(o1);
+            session.save(o2);
+            session.save(o3);
+            session.save(o4);
+            session.save(o5);
+            session.save(o6);
+
+            transaction.commit();
+            System.out.println("Test data: 6 user orders inserted for 3 different users.");
+        }
+    }
 
     public static void demonstrateSlide14() {
         System.out.println("\n=== Demo for Slide 14: NativeQuery with Multiple Entity Mapping ===");
