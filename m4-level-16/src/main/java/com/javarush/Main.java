@@ -5,6 +5,7 @@ import com.javarush.entity.slide12.Person;
 import com.javarush.entity.slide13.Book;
 import com.javarush.entity.slide14.Author;
 import com.javarush.entity.slide14.BookDetail;
+import com.javarush.entity.slide16.BankAccount;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -59,11 +60,292 @@ public class Main {
         demonstrateSlide14();
 
         demonstrateSlide15();
+
+        demonstrateSlide16();
         
         HibernateUtil.shutdown();
     }
 
+
     // В класс Main добавляем метод:
+    public static void demonstrateSlide16() {
+        System.out.println("\n=== Demo for Slide 16: Transactions in Hibernate ===");
+        System.out.println("Demonstrating JDBC transactions with commit/rollback scenarios");
+
+        // Подготовка тестовых данных
+        prepareBankAccountData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            System.out.println("\n--- Scenario 1: Successful Transaction (Commit) ---");
+            demoSuccessfulTransaction(session);
+
+            System.out.println("\n--- Scenario 2: Failed Transaction (Rollback) ---");
+            demoFailedTransaction(session);
+
+            System.out.println("\n--- Scenario 3: Manual Transaction Management ---");
+            demoManualTransactionManagement(session);
+
+            System.out.println("\n--- Scenario 4: Transaction Timeout ---");
+            demoTransactionTimeout(session);
+
+            // Показываем финальное состояние счетов
+            displayAllAccounts(session);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Сценарий 1: Успешная транзакция с коммитом
+    private static void demoSuccessfulTransaction(Session session) {
+        System.out.println("\nTransfer $100 from account ACC001 to ACC002");
+
+        Transaction transaction = null;
+        try {
+            // Начинаем транзакцию (JDBC транзакция начинается здесь)
+            transaction = session.beginTransaction();
+            System.out.println("1. Transaction started");
+
+            // Получаем счета
+            BankAccount account1 = session.createQuery(
+                    "FROM BankAccount WHERE accountNumber = 'ACC001'", BankAccount.class
+            ).uniqueResult();
+
+            BankAccount account2 = session.createQuery(
+                    "FROM BankAccount WHERE accountNumber = 'ACC002'", BankAccount.class
+            ).uniqueResult();
+
+            System.out.println("2. Accounts retrieved:");
+            System.out.println("   - " + account1.getAccountHolder() + ": $" + account1.getBalance());
+            System.out.println("   - " + account2.getAccountHolder() + ": $" + account2.getBalance());
+
+            // Выполняем перевод
+            BigDecimal transferAmount = new BigDecimal("100.00");
+
+            // Проверяем достаточность средств
+            if (account1.getBalance().compareTo(transferAmount) >= 0) {
+                account1.setBalance(account1.getBalance().subtract(transferAmount));
+                account2.setBalance(account2.getBalance().add(transferAmount));
+
+                session.update(account1);
+                session.update(account2);
+
+                System.out.println("3. Transfer executed: -$100 from ACC001, +$100 to ACC002");
+                System.out.println("4. Changes saved in session (but not yet in database)");
+
+                // Коммитим транзакцию
+                transaction.commit();
+                System.out.println("5. Transaction COMMITTED - changes saved to database");
+            } else {
+                System.out.println("Insufficient funds - transaction would fail");
+                transaction.rollback();
+            }
+
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+                System.out.println("Transaction ROLLED BACK due to: " + e.getMessage());
+            }
+            throw e;
+        }
+    }
+
+    // Сценарий 2: Неуспешная транзакция с откатом
+    private static void demoFailedTransaction(Session session) {
+        System.out.println("\nAttempt to transfer $5000 from account ACC003 (insufficient funds)");
+
+        Transaction transaction = null;
+        try {
+            transaction = session.beginTransaction();
+            System.out.println("1. Transaction started");
+
+            BankAccount account3 = session.createQuery(
+                    "FROM BankAccount WHERE accountNumber = 'ACC003'", BankAccount.class
+            ).uniqueResult();
+
+            BankAccount account4 = session.createQuery(
+                    "FROM BankAccount WHERE accountNumber = 'ACC004'", BankAccount.class
+            ).uniqueResult();
+
+            System.out.println("2. Account balances before:");
+            System.out.println("   - " + account3.getAccountHolder() + ": $" + account3.getBalance());
+            System.out.println("   - " + account4.getAccountHolder() + ": $" + account4.getBalance());
+
+            // Пытаемся перевести больше, чем есть на счете
+            BigDecimal transferAmount = new BigDecimal("5000.00");
+
+            if (account3.getBalance().compareTo(transferAmount) >= 0) {
+                account3.setBalance(account3.getBalance().subtract(transferAmount));
+                account4.setBalance(account4.getBalance().add(transferAmount));
+
+                session.update(account3);
+                session.update(account4);
+
+                transaction.commit();
+            } else {
+                // Имитируем бизнес-логику, которая вызывает откат
+                System.out.println("3. Insufficient funds! Balance: $" + account3.getBalance() +
+                        ", Required: $" + transferAmount);
+                System.out.println("4. Business logic rejects the transfer");
+
+                // Явный откат транзакции
+                transaction.rollback();
+                System.out.println("5. Transaction ROLLED BACK - no changes to database");
+            }
+
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            System.out.println("Transaction automatically rolled back due to exception");
+        }
+    }
+
+    // Сценарий 3: Ручное управление транзакцией
+    private static void demoManualTransactionManagement(Session session) {
+        System.out.println("\nManual transaction control with commit/rollback");
+
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            System.out.println("1. Transaction started (autoCommit = false)");
+
+            // Проверяем статус транзакции
+            System.out.println("2. Transaction isActive: " + transaction.isActive());
+
+            // Создаем новый счет
+            BankAccount newAccount = new BankAccount();
+            newAccount.setAccountNumber("ACC005");
+            newAccount.setAccountHolder("Test User");
+            newAccount.setBalance(new BigDecimal("1000.00"));
+            newAccount.setCurrency("USD");
+
+            session.save(newAccount);
+            System.out.println("3. New account created in memory");
+
+            // Имитируем проверку перед коммитом
+            boolean shouldCommit = true; // Может зависеть от бизнес-логики
+
+            if (shouldCommit) {
+                transaction.commit();
+                System.out.println("4. Transaction COMMITTED - account saved");
+            } else {
+                transaction.rollback();
+                System.out.println("4. Transaction ROLLED BACK - account not saved");
+            }
+
+            System.out.println("5. Transaction isActive after commit/rollback: " + transaction.isActive());
+
+        } catch (Exception e) {
+            transaction.rollback();
+            System.out.println("Transaction rolled back due to exception: " + e.getMessage());
+        }
+    }
+
+    // Сценарий 4: Таймаут транзакции
+    private static void demoTransactionTimeout(Session session) {
+        System.out.println("\nSetting transaction timeout (max execution time)");
+
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            // Устанавливаем таймаут в 3 секунды
+            transaction.setTimeout(3); // в секундах
+            System.out.println("1. Transaction started with 3-second timeout");
+
+            // Имитируем долгую операцию
+            System.out.println("2. Starting long operation...");
+
+            BankAccount account = session.createQuery(
+                    "FROM BankAccount WHERE accountNumber = 'ACC001'", BankAccount.class
+            ).uniqueResult();
+
+            // Имитируем долгую обработку
+            try {
+                Thread.sleep(5000); // 5 секунд - превышает таймаут
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            // Это не должно выполниться из-за таймаута
+            account.setBalance(account.getBalance().add(new BigDecimal("50.00")));
+            session.update(account);
+
+            transaction.commit();
+            System.out.println("3. This should not print due to timeout");
+
+        } catch (Exception e) {
+            System.out.println("4. Transaction failed: " + e.getMessage());
+            System.out.println("   (Expected: transaction timeout after 3 seconds)");
+        }
+    }
+
+    // Вспомогательный метод: отображение всех счетов
+    private static void displayAllAccounts(Session session) {
+        System.out.println("\n--- Final Account Balances ---");
+
+        List<BankAccount> accounts = session.createQuery(
+                "FROM BankAccount ORDER BY accountNumber", BankAccount.class
+        ).list();
+
+        System.out.println("=".repeat(60));
+        System.out.println(String.format("%-10s | %-20s | %-10s",
+                "Account", "Holder", "Balance"));
+        System.out.println("-".repeat(60));
+
+        for (BankAccount account : accounts) {
+            System.out.println(String.format("%-10s | %-20s | $%-9.2f",
+                    account.getAccountNumber(),
+                    account.getAccountHolder(),
+                    account.getBalance()
+            ));
+        }
+        System.out.println("Total accounts: " + accounts.size());
+    }
+
+    private static void prepareBankAccountData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from BankAccount").executeUpdate();
+
+            // Создание тестовых данных
+            BankAccount a1 = new BankAccount();
+            a1.setAccountNumber("ACC001");
+            a1.setAccountHolder("John Smith");
+            a1.setBalance(new BigDecimal("1500.00"));
+            a1.setCurrency("USD");
+
+            BankAccount a2 = new BankAccount();
+            a2.setAccountNumber("ACC002");
+            a2.setAccountHolder("Emma Wilson");
+            a2.setBalance(new BigDecimal("2500.00"));
+            a2.setCurrency("USD");
+
+            BankAccount a3 = new BankAccount();
+            a3.setAccountNumber("ACC003");
+            a3.setAccountHolder("Alex Johnson");
+            a3.setBalance(new BigDecimal("800.00"));
+            a3.setCurrency("USD");
+
+            BankAccount a4 = new BankAccount();
+            a4.setAccountNumber("ACC004");
+            a4.setAccountHolder("Michael Brown");
+            a4.setBalance(new BigDecimal("3200.00"));
+            a4.setCurrency("USD");
+
+            session.save(a1);
+            session.save(a2);
+            session.save(a3);
+            session.save(a4);
+
+            transaction.commit();
+            System.out.println("Test data: 4 bank accounts created with initial balances.");
+        }
+    }
+
     public static void demonstrateSlide15() {
         System.out.println("\n=== Demo for Slide 15: DTO Mapping with NativeQuery ===");
         System.out.println("Mapping SQL results to plain Java classes (DTOs) without JPA annotations");
