@@ -2881,7 +2881,7 @@ public class Main {
             Transaction transaction = session.beginTransaction();
 
             // Очистка таблицы
-            session.createQuery("delete from EmployeeDaoExample").executeUpdate();
+            session.createQuery("delete from Employee").executeUpdate();
 
             // Создание тестовых данных (все на английском)
             Employee e1 = new Employee();
