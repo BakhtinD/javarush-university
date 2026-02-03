@@ -3,6 +3,8 @@ package com.javarush;
 import com.javarush.entity.slide10.ProductStock;
 import com.javarush.entity.slide12.Person;
 import com.javarush.entity.slide13.Book;
+import com.javarush.entity.slide14.Author;
+import com.javarush.entity.slide14.BookDetail;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -43,11 +45,223 @@ public class Main {
         demonstrateSlide12();
 
         demonstrateSlide13();
+
+        demonstrateSlide14();
         
         HibernateUtil.shutdown();
     }
 
-    // В класс Main добавляем метод:
+
+    public static void demonstrateSlide14() {
+        System.out.println("\n=== Demo for Slide 14: NativeQuery with Multiple Entity Mapping ===");
+        System.out.println("Mapping result to multiple entities in one query (as shown on slide)");
+
+        // Подготовка тестовых данных
+        prepareAuthorBookData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            System.out.println("\n--- Example 1: Basic multi-entity mapping (like on slide) ---");
+            demoBasicMultiEntityMapping(session);
+
+            System.out.println("\n--- Example 2: Selective column loading ---");
+            demoSelectiveColumnLoading(session);
+
+            System.out.println("\n--- Example 3: Overcoming Lazy Loading ---");
+            demoOvercomingLazyLoading(session);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Пример 1: Базовый маппинг нескольких сущностей (как на слайде)
+    private static void demoBasicMultiEntityMapping(Session session) {
+        System.out.println("SQL with {alias.*} syntax and addEntity()/addJoin():");
+        System.out.println("SELECT {b.*}, {a.*} FROM slide14_book_details b");
+        System.out.println("JOIN slide14_authors a ON b.author_id = a.id");
+
+        // Нативный запрос с маппингом на две сущности
+        List<BookDetail> books = session.createNativeQuery(
+                        "SELECT {b.*}, {a.*} " +
+                                "FROM slide14_book_details b " +
+                                "JOIN slide14_authors a ON b.author_id = a.id " +
+                                "WHERE b.price > 30"
+                )
+                .addEntity("b", BookDetail.class)
+                .addJoin("a", "b.author")
+                .list();
+
+        System.out.println("\nResults: " + books.size() + " books with authors loaded");
+        System.out.println("First book: \"" + books.get(0).getTitle() + "\"");
+        System.out.println("Author: " + books.get(0).getAuthor().getFullName());
+        System.out.println("Author email: " + books.get(0).getAuthor().getEmail());
+
+        // Проверяем, что связь действительно заполнена
+        System.out.println("\nChecking that author association is properly loaded:");
+        for (BookDetail book : books) {
+            if (book.getAuthor() != null && book.getAuthor().getFullName() != null) {
+                System.out.println("✓ " + book.getTitle() + " -> " + book.getAuthor().getFullName());
+            }
+        }
+    }
+
+    // Пример 2: Селективная загрузка только нужных колонок
+    private static void demoSelectiveColumnLoading(Session session) {
+        System.out.println("\nSelective loading - only specific columns:");
+        System.out.println("SELECT b.id, b.title, b.price, a.full_name, a.nationality");
+        System.out.println("FROM slide14_book_details b");
+        System.out.println("JOIN slide14_authors a ON b.author_id = a.id");
+
+        // Вместо {alias.*} указываем конкретные колонки
+        List<Object[]> results = session.createNativeQuery(
+                "SELECT b.id as book_id, b.title, b.price, " +
+                        "a.id as author_id, a.full_name, a.nationality " +
+                        "FROM slide14_book_details b " +
+                        "JOIN slide14_authors a ON b.author_id = a.id " +
+                        "WHERE a.nationality = 'American'"
+        ).list();
+
+        System.out.println("\nSelective results (Object[] arrays):");
+        System.out.println("=".repeat(70));
+        System.out.println(String.format("%-8s | %-25s | %-8s | %-20s | %-15s",
+                "Book ID", "Title", "Price", "Author Name", "Nationality"));
+        System.out.println("-".repeat(70));
+
+        for (Object[] row : results) {
+            Long bookId = ((Number) row[0]).longValue();
+            String title = (String) row[1];
+            BigDecimal price = (BigDecimal) row[2];
+            Long authorId = ((Number) row[3]).longValue();
+            String authorName = (String) row[4];
+            String nationality = (String) row[5];
+
+            System.out.println(String.format("%-8d | %-25s | $%-7.2f | %-20s | %-15s",
+                    bookId, title, price, authorName, nationality));
+        }
+    }
+
+    // Пример 3: Преодоление Lazy Loading
+    private static void demoOvercomingLazyLoading(Session session) {
+        System.out.println("\n--- Testing Lazy Loading issue ---");
+
+        // Сначала получаем автора обычным способом (будет Lazy Loading для книг)
+        Author author = session.createQuery(
+                        "FROM Author a WHERE a.fullName = :name", Author.class)
+                .setParameter("name", "Stephen King")
+                .uniqueResult();
+
+        System.out.println("1. Regular HQL query for author:");
+        System.out.println("   Author: " + author.getFullName());
+        System.out.println("   Books collection initialized: " +
+                (author.getBooks() != null ? "Yes" : "No"));
+        System.out.println("   But books are LAZY loaded - need separate queries");
+
+        System.out.println("\n2. NativeQuery with multi-entity mapping:");
+        System.out.println("   Loading author WITH books in single query");
+
+        // Нативный запрос с немедленной загрузкой книг
+        List<Author> authorsWithBooks = session.createNativeQuery(
+                        "SELECT {a.*}, {b.*} " +
+                                "FROM slide14_authors a " +
+                                "LEFT JOIN slide14_book_details b ON a.id = b.author_id " +
+                                "WHERE a.full_name = 'Stephen King'"
+                )
+                .addEntity("a", Author.class)
+                .addJoin("b", "a.books")
+                .list();
+
+        Author loadedAuthor = authorsWithBooks.get(0);
+        System.out.println("   Author: " + loadedAuthor.getFullName());
+        System.out.println("   Books count: " + loadedAuthor.getBooks().size());
+
+        // Показываем книги
+        System.out.println("   Books by " + loadedAuthor.getFullName() + ":");
+        for (BookDetail book : loadedAuthor.getBooks()) {
+            System.out.println("     - " + book.getTitle() + " (" + book.getPublicationYear() + ")");
+        }
+    }
+
+    private static void prepareAuthorBookData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблиц
+            session.createQuery("delete from BookDetail").executeUpdate();
+            session.createQuery("delete from Author").executeUpdate();
+
+            // Создание авторов
+            Author a1 = new Author();
+            a1.setFullName("Stephen King");
+            a1.setNationality("American");
+            a1.setEmail("sking@email.com");
+
+            Author a2 = new Author();
+            a2.setFullName("J.K. Rowling");
+            a2.setNationality("British");
+            a2.setEmail("jkrowling@email.com");
+
+            Author a3 = new Author();
+            a3.setFullName("Haruki Murakami");
+            a3.setNationality("Japanese");
+            a3.setEmail("hmurakami@email.com");
+
+            session.save(a1);
+            session.save(a2);
+            session.save(a3);
+
+            // Создание книг
+            BookDetail b1 = new BookDetail();
+            b1.setTitle("The Shining");
+            b1.setGenre("Horror");
+            b1.setPrice(new BigDecimal("12.99"));
+            b1.setPublicationYear(1977);
+            b1.setPageCount(447);
+            b1.setAuthor(a1);
+
+            BookDetail b2 = new BookDetail();
+            b2.setTitle("It");
+            b2.setGenre("Horror");
+            b2.setPrice(new BigDecimal("14.99"));
+            b2.setPublicationYear(1986);
+            b2.setPageCount(1138);
+            b2.setAuthor(a1);
+
+            BookDetail b3 = new BookDetail();
+            b3.setTitle("Harry Potter and the Philosopher's Stone");
+            b3.setGenre("Fantasy");
+            b3.setPrice(new BigDecimal("19.99"));
+            b3.setPublicationYear(1997);
+            b3.setPageCount(223);
+            b3.setAuthor(a2);
+
+            BookDetail b4 = new BookDetail();
+            b4.setTitle("Norwegian Wood");
+            b4.setGenre("Fiction");
+            b4.setPrice(new BigDecimal("11.99"));
+            b4.setPublicationYear(1987);
+            b4.setPageCount(296);
+            b4.setAuthor(a3);
+
+            BookDetail b5 = new BookDetail();
+            b5.setTitle("The Stand");
+            b5.setGenre("Post-Apocalyptic");
+            b5.setPrice(new BigDecimal("16.99"));
+            b5.setPublicationYear(1978);
+            b5.setPageCount(823);
+            b5.setAuthor(a1);
+
+            session.save(b1);
+            session.save(b2);
+            session.save(b3);
+            session.save(b4);
+            session.save(b5);
+
+            transaction.commit();
+            System.out.println("Test data: 3 authors and 5 books inserted.");
+        }
+    }
+
     public static void demonstrateSlide13() {
         System.out.println("\n=== Demo for Slide 13: NativeQuery Entity Mapping ===");
         System.out.println("Showing both Hibernate and JPA approaches for entity mapping");
