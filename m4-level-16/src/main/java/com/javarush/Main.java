@@ -895,7 +895,7 @@ public class Main {
         System.out.println("\nDTO from denormalized report table (read-only external database)");
 
         // Имитируем запрос к внешней денормализованной таблице
-        List<com.javarush.dto.slide15.DenormalizedReportDTO> reports = session.createNativeQuery(
+        List<com.javarush.entity.slide15.DenormalizedReportDTO> reports = session.createNativeQuery(
                         "SELECT " +
                                 "  'Engineering' as departmentName, " +
                                 "  'John Manager' as managerName, " +
@@ -916,12 +916,12 @@ public class Main {
                                 "  5, " +
                                 "  3"
                 )
-                .setResultTransformer(Transformers.aliasToBean(com.javarush.dto.slide15.DenormalizedReportDTO.class))
+                .setResultTransformer(Transformers.aliasToBean(com.javarush.entity.slide15.DenormalizedReportDTO.class))
                 .list();
 
         System.out.println("\nDenormalized Report DTOs:");
         System.out.println("=".repeat(90));
-        for (com.javarush.dto.slide15.DenormalizedReportDTO report : reports) {
+        for (com.javarush.entity.slide15.DenormalizedReportDTO report : reports) {
             System.out.println(String.format("Department: %s", report.getDepartmentName()));
             System.out.println(String.format("  Manager: %s, Employees: %d",
                     report.getManagerName(), report.getEmployeeCount()));
