@@ -1,5 +1,6 @@
 package com.javarush;
 
+import com.javarush.entity.slide10.ProductStock;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -11,10 +12,7 @@ import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
-import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,7 +36,322 @@ public class Main {
 
         demonstrateSlide9();
 
+        demonstrateSlide10();
+
         HibernateUtil.shutdown();
+    }
+
+    // В класс Main добавляем метод:
+    public static void demonstrateSlide10() {
+        System.out.println("\n=== Demo for Slide 10: CriteriaUpdate and CriteriaDelete ===");
+
+        // Подготовка тестовых данных
+        prepareProductStockData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+
+            System.out.println("\n--- Current Data Before Operations ---");
+            displayAllProducts(session);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("PART 1: CriteriaUpdate - Bulk Price Update");
+            System.out.println("Update: Increase price by 10% for all Electronics products");
+            demoCriteriaUpdate(session, builder);
+
+            System.out.println("\n--- Data After Price Update ---");
+            displayAllProducts(session);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("PART 2: CriteriaUpdate - Complex Update with Conditions");
+            System.out.println("Update: Mark as inactive and set quantity to 0 for low-stock Clothing");
+            demoCriteriaUpdateWithConditions(session, builder);
+
+            System.out.println("\n--- Data After Complex Update ---");
+            displayAllProducts(session);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("PART 3: CriteriaDelete - Simple Delete");
+            System.out.println("Delete: Remove all inactive products");
+            demoCriteriaDelete(session, builder);
+
+            System.out.println("\n--- Data After Delete ---");
+            displayAllProducts(session);
+
+            System.out.println("\n" + "=".repeat(70));
+            System.out.println("PART 4: CriteriaDelete - Delete with Complex Conditions");
+            System.out.println("Delete: Remove all FOOD products with price < 5.00");
+            demoCriteriaDeleteWithConditions(session, builder);
+
+            System.out.println("\n--- Final Data After All Operations ---");
+            displayAllProducts(session);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Метод для отображения всех продуктов
+    private static void displayAllProducts(Session session) {
+        CriteriaBuilder builder = session.getCriteriaBuilder();
+        CriteriaQuery<ProductStock> query = builder.createQuery(ProductStock.class);
+        Root<ProductStock> root = query.from(ProductStock.class);
+
+        query.select(root).orderBy(builder.asc(root.get("category")),
+                builder.asc(root.get("productCode")));
+
+        List<ProductStock> products = session.createQuery(query).getResultList();
+
+        System.out.println("\n" + String.format("%-10s | %-20s | %-12s | %8s | %-10s | %-6s",
+                "Code", "Name", "Category", "Qty", "Price", "Active"));
+        System.out.println("-".repeat(85));
+
+        for (ProductStock p : products) {
+            System.out.println(String.format("%-10s | %-20s | %-12s | %8d | $%7.2f | %-6s",
+                    p.getProductCode(),
+                    p.getProductName(),
+                    p.getCategory(),
+                    p.getQuantity(),
+                    p.getPrice(),
+                    p.getActive() ? "Yes" : "No"
+            ));
+        }
+        System.out.println("Total: " + products.size() + " product(s)");
+    }
+
+    // 1. Простое обновление: Увеличение цены для категории
+    private static void demoCriteriaUpdate(Session session, CriteriaBuilder builder) {
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            // Создаем CriteriaUpdate
+            CriteriaUpdate<ProductStock> update = builder.createCriteriaUpdate(ProductStock.class);
+            Root<ProductStock> root = update.from(ProductStock.class);
+
+            // Явно создаем выражение для умножения
+            Expression<BigDecimal> newPriceExpression = builder.prod(
+                    root.<BigDecimal>get("price"),
+                    new BigDecimal("1.10")
+            );
+
+            // Устанавливаем новое значение: price = price * 1.10 (увеличение на 10%)
+            update.set(root.<BigDecimal>get("price"), newPriceExpression);
+
+            // Обновляем поле lastUpdated
+            update.set(root.get("lastUpdated"), LocalDateTime.now());
+
+            // Условие: только продукты категории ELECTRONICS
+            update.where(builder.equal(root.get("category"), "ELECTRONICS"));
+
+            // Выполняем обновление
+            int updatedCount = session.createQuery(update).executeUpdate();
+
+            transaction.commit();
+            System.out.println("Updated " + updatedCount + " Electronics product(s)");
+
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+    }
+
+    // 2. Сложное обновление с несколькими условиями
+    private static void demoCriteriaUpdateWithConditions(Session session, CriteriaBuilder builder) {
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            CriteriaUpdate<ProductStock> update = builder.createCriteriaUpdate(ProductStock.class);
+            Root<ProductStock> root = update.from(ProductStock.class);
+
+            // Устанавливаем несколько значений
+            update.set(root.get("active"), false);
+            update.set(root.get("quantity"), 0);
+            update.set(root.get("lastUpdated"), LocalDateTime.now());
+
+            // Сложное условие: Clothing с количеством меньше 5
+            Predicate categoryCondition = builder.equal(root.get("category"), "CLOTHING");
+            Predicate lowStockCondition = builder.lt(root.get("quantity"), 5);
+            Predicate activeCondition = builder.equal(root.get("active"), true);
+
+            update.where(builder.and(categoryCondition, lowStockCondition, activeCondition));
+
+            int updatedCount = session.createQuery(update).executeUpdate();
+
+            transaction.commit();
+            System.out.println("Deactivated " + updatedCount + " low-stock Clothing product(s)");
+
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+    }
+
+    // 3. Простое удаление: все неактивные продукты
+    private static void demoCriteriaDelete(Session session, CriteriaBuilder builder) {
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            // Создаем CriteriaDelete
+            CriteriaDelete<ProductStock> delete = builder.createCriteriaDelete(ProductStock.class);
+            Root<ProductStock> root = delete.from(ProductStock.class);
+
+            // Условие: active = false
+            delete.where(builder.equal(root.get("active"), false));
+
+            int deletedCount = session.createQuery(delete).executeUpdate();
+
+            transaction.commit();
+            System.out.println("Deleted " + deletedCount + " inactive product(s)");
+
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+    }
+
+    // 4. Удаление с сложными условиями
+    private static void demoCriteriaDeleteWithConditions(Session session, CriteriaBuilder builder) {
+        Transaction transaction = session.beginTransaction();
+
+        try {
+            CriteriaDelete<ProductStock> delete = builder.createCriteriaDelete(ProductStock.class);
+            Root<ProductStock> root = delete.from(ProductStock.class);
+
+            // Условия: FOOD категория И цена меньше 5.00
+            Predicate categoryCondition = builder.equal(root.get("category"), "FOOD");
+            Predicate priceCondition = builder.lt(root.get("price"), new BigDecimal("5.00"));
+
+            delete.where(builder.and(categoryCondition, priceCondition));
+
+            int deletedCount = session.createQuery(delete).executeUpdate();
+
+            transaction.commit();
+            System.out.println("Deleted " + deletedCount + " cheap FOOD product(s)");
+
+        } catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+    }
+
+    private static void prepareProductStockData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from ProductStock").executeUpdate();
+
+            // Создание тестовых данных
+            LocalDateTime now = LocalDateTime.now();
+
+            // Электроника
+            ProductStock p1 = new ProductStock();
+            p1.setProductCode("ELEC001");
+            p1.setProductName("Smartphone X");
+            p1.setQuantity(25);
+            p1.setPrice(new BigDecimal("699.99"));
+            p1.setCategory("ELECTRONICS");
+            p1.setLastUpdated(now.minusDays(10));
+            p1.setActive(true);
+
+            ProductStock p2 = new ProductStock();
+            p2.setProductCode("ELEC002");
+            p2.setProductName("Laptop Pro");
+            p2.setQuantity(15);
+            p2.setPrice(new BigDecimal("1299.99"));
+            p2.setCategory("ELECTRONICS");
+            p2.setLastUpdated(now.minusDays(5));
+            p2.setActive(true);
+
+            ProductStock p3 = new ProductStock();
+            p3.setProductCode("ELEC003");
+            p3.setProductName("Wireless Headphones");
+            p3.setQuantity(8);
+            p3.setPrice(new BigDecimal("199.99"));
+            p3.setCategory("ELECTRONICS");
+            p3.setLastUpdated(now.minusDays(2));
+            p3.setActive(true);
+
+            // Одежда
+            ProductStock p4 = new ProductStock();
+            p4.setProductCode("CLOTH001");
+            p4.setProductName("T-Shirt Basic");
+            p4.setQuantity(50);
+            p4.setPrice(new BigDecimal("19.99"));
+            p4.setCategory("CLOTHING");
+            p4.setLastUpdated(now.minusDays(30));
+            p4.setActive(true);
+
+            ProductStock p5 = new ProductStock();
+            p5.setProductCode("CLOTH002");
+            p5.setProductName("Jeans Classic");
+            p5.setQuantity(3); // Низкий запас
+            p5.setPrice(new BigDecimal("49.99"));
+            p5.setCategory("CLOTHING");
+            p5.setLastUpdated(now.minusDays(15));
+            p5.setActive(true);
+
+            ProductStock p6 = new ProductStock();
+            p6.setProductCode("CLOTH003");
+            p6.setProductName("Winter Jacket");
+            p6.setQuantity(0); // Нет в наличии
+            p6.setPrice(new BigDecimal("129.99"));
+            p6.setCategory("CLOTHING");
+            p6.setLastUpdated(now.minusDays(60));
+            p6.setActive(false); // Неактивный
+
+            // Еда
+            ProductStock p7 = new ProductStock();
+            p7.setProductCode("FOOD001");
+            p7.setProductName("Chocolate Bar");
+            p7.setQuantity(100);
+            p7.setPrice(new BigDecimal("2.99"));
+            p7.setCategory("FOOD");
+            p7.setLastUpdated(now.minusDays(1));
+            p7.setActive(true);
+
+            ProductStock p8 = new ProductStock();
+            p8.setProductCode("FOOD002");
+            p8.setProductName("Premium Coffee");
+            p8.setQuantity(40);
+            p8.setPrice(new BigDecimal("12.99"));
+            p8.setCategory("FOOD");
+            p8.setLastUpdated(now.minusDays(3));
+            p8.setActive(true);
+
+            ProductStock p9 = new ProductStock();
+            p9.setProductCode("FOOD003");
+            p9.setProductName("Candy Pack");
+            p9.setQuantity(200);
+            p9.setPrice(new BigDecimal("1.49")); // Дешевая еда
+            p9.setCategory("FOOD");
+            p9.setLastUpdated(now.minusDays(7));
+            p9.setActive(true);
+
+            // Другие товары
+            ProductStock p10 = new ProductStock();
+            p10.setProductCode("OTHER001");
+            p10.setProductName("Desk Lamp");
+            p10.setQuantity(12);
+            p10.setPrice(new BigDecimal("34.99"));
+            p10.setCategory("OTHER");
+            p10.setLastUpdated(now.minusDays(20));
+            p10.setActive(true);
+
+            session.save(p1);
+            session.save(p2);
+            session.save(p3);
+            session.save(p4);
+            session.save(p5);
+            session.save(p6);
+            session.save(p7);
+            session.save(p8);
+            session.save(p9);
+            session.save(p10);
+
+            transaction.commit();
+            System.out.println("Test data: 10 products inserted with different categories and statuses.");
+        }
     }
 
     public static void demonstrateSlide9() {
