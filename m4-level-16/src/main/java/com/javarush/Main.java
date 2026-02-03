@@ -6,6 +6,7 @@ import com.javarush.entity.slide5.Employee;
 import com.javarush.entity.slide6.Developer;
 import com.javarush.entity.slide7.Account;
 import com.javarush.entity.slide8.Project;
+import com.javarush.entity.slide9.SalesRecord;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -35,7 +36,267 @@ public class Main {
 
         demonstrateSlide8();
 
+        demonstrateSlide9();
+
         HibernateUtil.shutdown();
+    }
+
+    public static void demonstrateSlide9() {
+        System.out.println("\n=== Demo for Slide 9: Aggregation Functions with Criteria API ===");
+        System.out.println("Demonstrating COUNT, AVG, SUM, MIN, MAX functions");
+
+        // Подготовка тестовых данных
+        prepareSalesData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+
+            System.out.println("\n--- Example 1: COUNT (as shown on slide) ---");
+            System.out.println("Query: Count all sales records");
+            demoCountFunction(session, builder);
+
+            System.out.println("\n--- Example 2: AVG (as shown on slide) ---");
+            System.out.println("Query: Calculate average sale amount");
+            demoAvgFunction(session, builder);
+
+            System.out.println("\n--- Example 3: SUM ---");
+            System.out.println("Query: Calculate total sales amount");
+            demoSumFunction(session, builder);
+
+            System.out.println("\n--- Example 4: MIN and MAX ---");
+            System.out.println("Query: Find smallest and largest sale amounts");
+            demoMinMaxFunctions(session, builder);
+
+            System.out.println("\n--- Example 5: Multiple Aggregations in One Query ---");
+            System.out.println("Query: Get comprehensive sales statistics");
+            demoMultipleAggregations(session, builder);
+
+            System.out.println("\n--- Example 6: Aggregation with WHERE condition ---");
+            System.out.println("Query: Average sale amount for Electronics category in 2023");
+            demoAggregationWithWhere(session, builder);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 1. COUNT() - Подсчет всех записей (как на слайде)
+    private static void demoCountFunction(Session session, CriteriaBuilder builder) {
+        // Способ 1: Как показано на слайде (без явного Root)
+        CriteriaQuery<Long> query = builder.createQuery(Long.class);
+        query.select(builder.count(query.from(SalesRecord.class)));
+
+        Long totalCount = session.createQuery(query).getSingleResult();
+        System.out.println("Method 1 (slide style): Total sales records = " + totalCount);
+
+        // Способ 2: С явным Root (более читаемо для сложных запросов)
+        CriteriaQuery<Long> query2 = builder.createQuery(Long.class);
+        Root<SalesRecord> root = query2.from(SalesRecord.class);
+        query2.select(builder.count(root));
+
+        Long totalCount2 = session.createQuery(query2).getSingleResult();
+        System.out.println("Method 2 (with explicit Root): Total sales records = " + totalCount2);
+    }
+
+    // 2. AVG() - Среднее значение (как на слайде)
+    private static void demoAvgFunction(Session session, CriteriaBuilder builder) {
+        // Способ 1: Как показано на слайде
+        CriteriaQuery<Double> query = builder.createQuery(Double.class);
+        query.select(builder.avg(query.from(SalesRecord.class).get("saleAmount")));
+
+        Double averageSale = session.createQuery(query).getSingleResult();
+        System.out.println("Method 1 (slide style): Average sale amount = $" +
+                String.format("%.2f", averageSale));
+
+        // Способ 2: С явным Root (используем Double, а не BigDecimal)
+        CriteriaQuery<Double> query2 = builder.createQuery(Double.class);
+        Root<SalesRecord> root = query2.from(SalesRecord.class);
+        query2.select(builder.avg(root.get("saleAmount")));
+
+        Double averageSale2 = session.createQuery(query2).getSingleResult();
+        System.out.println("Method 2 (with explicit Root): Average sale amount = $" +
+                String.format("%.2f", averageSale2));
+    }
+
+    // 3. SUM() - Сумма значений
+    private static void demoSumFunction(Session session, CriteriaBuilder builder) {
+        CriteriaQuery<BigDecimal> query = builder.createQuery(BigDecimal.class);
+        Root<SalesRecord> root = query.from(SalesRecord.class);
+
+        query.select(builder.sum(root.get("saleAmount")));
+
+        BigDecimal totalSales = session.createQuery(query).getSingleResult();
+        System.out.println("Total sales amount = $" +
+                totalSales.setScale(2, BigDecimal.ROUND_HALF_UP));
+    }
+
+    // 4. MIN() и MAX() - Минимальное и максимальное значения
+    private static void demoMinMaxFunctions(Session session, CriteriaBuilder builder) {
+        // MIN
+        CriteriaQuery<BigDecimal> minQuery = builder.createQuery(BigDecimal.class);
+        Root<SalesRecord> minRoot = minQuery.from(SalesRecord.class);
+        minQuery.select(builder.min(minRoot.get("saleAmount")));
+
+        BigDecimal minSale = session.createQuery(minQuery).getSingleResult();
+        System.out.println("Smallest sale amount = $" +
+                minSale.setScale(2, BigDecimal.ROUND_HALF_UP));
+
+        // MAX
+        CriteriaQuery<BigDecimal> maxQuery = builder.createQuery(BigDecimal.class);
+        Root<SalesRecord> maxRoot = maxQuery.from(SalesRecord.class);
+        maxQuery.select(builder.max(maxRoot.get("saleAmount")));
+
+        BigDecimal maxSale = session.createQuery(maxQuery).getSingleResult();
+        System.out.println("Largest sale amount = $" +
+                maxSale.setScale(2, BigDecimal.ROUND_HALF_UP));
+    }
+
+    // 5. Несколько агрегирующих функций в одном запросе
+    // 5. Несколько агрегирующих функций в одном запросе
+    private static void demoMultipleAggregations(Session session, CriteriaBuilder builder) {
+        System.out.println("\nMultiple aggregations require a different approach:");
+        System.out.println("We need to use Tuple or Object[] as result type");
+
+        CriteriaQuery<Object[]> query = builder.createQuery(Object[].class);
+        Root<SalesRecord> root = query.from(SalesRecord.class);
+
+        query.multiselect(
+                builder.count(root).alias("count"),
+                builder.avg(root.get("saleAmount")).alias("avg_amount"),
+                builder.sum(root.get("saleAmount")).alias("total_amount"),
+                builder.min(root.get("saleAmount")).alias("min_amount"),
+                builder.max(root.get("saleAmount")).alias("max_amount")
+        );
+
+        Object[] result = session.createQuery(query).getSingleResult();
+
+        System.out.println("\nComprehensive Sales Statistics:");
+        System.out.println("Total records: " + result[0]);
+        System.out.println("Average sale: $" +
+                String.format("%.2f", (Double)result[1])); // Double для avg
+        System.out.println("Total sales: $" +
+                ((BigDecimal)result[2]).setScale(2, BigDecimal.ROUND_HALF_UP));
+        System.out.println("Min sale: $" +
+                ((BigDecimal)result[3]).setScale(2, BigDecimal.ROUND_HALF_UP));
+        System.out.println("Max sale: $" +
+                ((BigDecimal)result[4]).setScale(2, BigDecimal.ROUND_HALF_UP));
+    }
+
+    // 6. Агрегация с условием WHERE
+    private static void demoAggregationWithWhere(Session session, CriteriaBuilder builder) {
+        // Используем Double, так как avg() возвращает Double
+        CriteriaQuery<Double> query = builder.createQuery(Double.class);
+        Root<SalesRecord> root = query.from(SalesRecord.class);
+
+        // Условия WHERE
+        Predicate categoryCondition = builder.equal(root.get("productCategory"), "ELECTRONICS");
+        Predicate dateCondition = builder.between(
+                root.get("saleDate"),
+                LocalDate.of(2023, 1, 1),
+                LocalDate.of(2023, 12, 31)
+        );
+        Predicate finalCondition = builder.and(categoryCondition, dateCondition);
+
+        query.select(builder.avg(root.get("saleAmount")))
+                .where(finalCondition);
+
+        Double avgElectronics2023 = session.createQuery(query).getSingleResult();
+
+        System.out.println("Average Electronics sale in 2023 = $" +
+                (avgElectronics2023 != null ?
+                        String.format("%.2f", avgElectronics2023) : "0.00"));
+    }
+
+    private static void prepareSalesData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from SalesRecord").executeUpdate();
+
+            // Создание тестовых данных
+            LocalDate baseDate = LocalDate.of(2023, 1, 15);
+
+            // Северный регион
+            SalesRecord s1 = new SalesRecord();
+            s1.setSalesperson("John Smith");
+            s1.setRegion("NORTH");
+            s1.setSaleAmount(new BigDecimal("1250.50"));
+            s1.setCommissionRate(new BigDecimal("0.05"));
+            s1.setSaleDate(baseDate.plusDays(10));
+            s1.setProductCategory("ELECTRONICS");
+
+            SalesRecord s2 = new SalesRecord();
+            s2.setSalesperson("John Smith");
+            s2.setRegion("NORTH");
+            s2.setSaleAmount(new BigDecimal("850.75"));
+            s2.setCommissionRate(new BigDecimal("0.05"));
+            s2.setSaleDate(baseDate.plusDays(25));
+            s2.setProductCategory("FURNITURE");
+
+            // Южный регион
+            SalesRecord s3 = new SalesRecord();
+            s3.setSalesperson("Emma Wilson");
+            s3.setRegion("SOUTH");
+            s3.setSaleAmount(new BigDecimal("2200.00"));
+            s3.setCommissionRate(new BigDecimal("0.07"));
+            s3.setSaleDate(baseDate.plusMonths(1).plusDays(5));
+            s3.setProductCategory("ELECTRONICS");
+
+            SalesRecord s4 = new SalesRecord();
+            s4.setSalesperson("Emma Wilson");
+            s4.setRegion("SOUTH");
+            s4.setSaleAmount(new BigDecimal("450.25"));
+            s4.setCommissionRate(new BigDecimal("0.07"));
+            s4.setSaleDate(baseDate.plusMonths(2));
+            s4.setProductCategory("CLOTHING");
+
+            // Восточный регион
+            SalesRecord s5 = new SalesRecord();
+            s5.setSalesperson("Alex Johnson");
+            s5.setRegion("EAST");
+            s5.setSaleAmount(new BigDecimal("3200.00"));
+            s5.setCommissionRate(new BigDecimal("0.06"));
+            s5.setSaleDate(baseDate.plusMonths(3));
+            s5.setProductCategory("ELECTRONICS");
+
+            SalesRecord s6 = new SalesRecord();
+            s6.setSalesperson("Alex Johnson");
+            s6.setRegion("EAST");
+            s6.setSaleAmount(new BigDecimal("1750.00"));
+            s6.setCommissionRate(null); // NULL commission rate
+            s6.setSaleDate(baseDate.plusMonths(4));
+            s6.setProductCategory("FURNITURE");
+
+            // Западный регион (2024 год для демонстрации фильтрации по дате)
+            SalesRecord s7 = new SalesRecord();
+            s7.setSalesperson("Michael Brown");
+            s7.setRegion("WEST");
+            s7.setSaleAmount(new BigDecimal("2800.00"));
+            s7.setCommissionRate(new BigDecimal("0.08"));
+            s7.setSaleDate(LocalDate.of(2024, 2, 20));
+            s7.setProductCategory("ELECTRONICS");
+
+            SalesRecord s8 = new SalesRecord();
+            s8.setSalesperson("Michael Brown");
+            s8.setRegion("WEST");
+            s8.setSaleAmount(new BigDecimal("950.50"));
+            s8.setCommissionRate(new BigDecimal("0.08"));
+            s8.setSaleDate(LocalDate.of(2024, 3, 15));
+            s8.setProductCategory("CLOTHING");
+
+            session.save(s1);
+            session.save(s2);
+            session.save(s3);
+            session.save(s4);
+            session.save(s5);
+            session.save(s6);
+            session.save(s7);
+            session.save(s8);
+
+            transaction.commit();
+            System.out.println("Test data: 8 sales records inserted with varied amounts and dates.");
+        }
     }
 
     public static void demonstrateSlide8() {
