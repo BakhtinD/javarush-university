@@ -3,6 +3,7 @@ package com.javarush;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
+import com.javarush.entity.slide6.Developer;
 import com.javarush.util.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -11,6 +12,7 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
 import javax.persistence.criteria.Predicate;
+import java.time.LocalDate;
 import java.util.List;
 
 public class Main {
@@ -20,10 +22,167 @@ public class Main {
         demonstrateSlide3();
         demonstrateSlide4();
         demonstrateSlide5();
+        demonstrateSlide6();
         HibernateUtil.shutdown();
     }
 
-    // В класс Main добавляем метод:
+    public static void demonstrateSlide6() {
+        System.out.println("\n=== Demo for Slide 6: Complex Conditions with Criteria API ===");
+
+        // Подготовка тестовых данных
+        prepareDeveloperData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+
+            System.out.println("\n--- Complex Query: Find developers who ---");
+            System.out.println("(Salary > 80000 OR Position like 'Senior%')");
+            System.out.println("AND");
+            System.out.println("(Knows Java = true OR Hire Date after 2022-01-01)");
+
+            // Создаем CriteriaQuery
+            CriteriaQuery<Developer> query = builder.createQuery(Developer.class);
+            Root<Developer> root = query.from(Developer.class);
+
+            // Шаг 1: Создаем отдельные предикаты (как на слайде)
+            System.out.println("\n1. Creating individual predicates...");
+
+            // Условие 1: Зарплата больше 80000
+            Predicate highSalary = builder.gt(root.get("salary"), 80000.0);
+            System.out.println("   Predicate 1: salary > 80000");
+
+            // Условие 2: Должность начинается с "Senior"
+            Predicate seniorPosition = builder.like(root.get("position"), "Senior%");
+            System.out.println("   Predicate 2: position LIKE 'Senior%'");
+
+            // Условие 3: Знает Java
+            Predicate knowsJava = builder.equal(root.get("knowsJava"), true);
+            System.out.println("   Predicate 3: knowsJava = true");
+
+            // Условие 4: Дата найма после 2022-01-01
+            Predicate recentHire = builder.greaterThan(
+                    root.get("hireDate"),
+                    LocalDate.of(2022, 1, 1)
+            );
+            System.out.println("   Predicate 4: hireDate > 2022-01-01");
+
+            // Шаг 2: Комбинируем предикаты в сложные условия
+            System.out.println("\n2. Combining predicates with OR...");
+
+            // (Salary > 80000 OR Position like 'Senior%')
+            Predicate salaryOrPosition = builder.or(highSalary, seniorPosition);
+            System.out.println("   Combined: (salary > 80000 OR position LIKE 'Senior%')");
+
+            // (Knows Java = true OR Hire Date after 2022-01-01)
+            Predicate skillsOrRecent = builder.or(knowsJava, recentHire);
+            System.out.println("   Combined: (knowsJava = true OR hireDate > 2022-01-01)");
+
+            // Шаг 3: Создаем финальное условие с AND
+            System.out.println("\n3. Creating final condition with AND...");
+            Predicate finalCondition = builder.and(salaryOrPosition, skillsOrRecent);
+            System.out.println("   Final: (salary>80000 OR Senior%) AND (knowsJava=true OR hired>2022)");
+
+            // Шаг 4: Собираем и выполняем запрос
+            System.out.println("\n4. Building and executing query...");
+            query.select(root).where(finalCondition);
+
+            List<Developer> results = session.createQuery(query).getResultList();
+
+            // Вывод результатов
+            System.out.println("\nQuery Result: Found " + results.size() + " developer(s)");
+            System.out.println("=".repeat(50));
+
+            for (Developer dev : results) {
+                System.out.println(String.format(
+                        "  - %-15s | %-12s | $%,8.0f | Java:%-5s | Spring:%-5s | Hired: %s",
+                        dev.getName(),
+                        dev.getPosition(),
+                        dev.getSalary(),
+                        dev.getKnowsJava() ? "Yes" : "No",
+                        dev.getKnowsSpring() ? "Yes" : "No",
+                        dev.getHireDate()
+                ));
+            }
+
+            // Выводим SQL-подобное представление запроса
+            System.out.println("\nEquivalent SQL-like query:");
+            System.out.println("SELECT * FROM slide6_developers");
+            System.out.println("WHERE (salary > 80000 OR position LIKE 'Senior%')");
+            System.out.println("  AND (knows_java = true OR hire_date > '2022-01-01')");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void prepareDeveloperData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from Developer").executeUpdate();
+
+            // Создание тестовых данных
+            Developer d1 = new Developer();
+            d1.setName("John Carter");
+            d1.setPosition("Senior Backend");
+            d1.setSalary(95000.0);
+            d1.setHireDate(LocalDate.of(2021, 3, 15));
+            d1.setKnowsJava(true);
+            d1.setKnowsSpring(true);
+
+            Developer d2 = new Developer();
+            d2.setName("Emma Watson");
+            d2.setPosition("Middle Frontend");
+            d2.setSalary(75000.0);
+            d2.setHireDate(LocalDate.of(2022, 6, 10));
+            d2.setKnowsJava(false); // Не знает Java
+            d2.setKnowsSpring(false);
+
+            Developer d3 = new Developer();
+            d3.setName("Alex Turner");
+            d3.setPosition("Junior Fullstack");
+            d3.setSalary(55000.0);
+            d3.setHireDate(LocalDate.of(2023, 1, 20));
+            d3.setKnowsJava(true);
+            d3.setKnowsSpring(false);
+
+            Developer d4 = new Developer();
+            d4.setName("Michael Scott");
+            d4.setPosition("Senior DevOps");
+            d4.setSalary(110000.0);
+            d4.setHireDate(LocalDate.of(2020, 8, 5));
+            d4.setKnowsJava(true);
+            d4.setKnowsSpring(true);
+
+            Developer d5 = new Developer();
+            d5.setName("Sarah Connor");
+            d5.setPosition("Lead Architect");
+            d5.setSalary(130000.0);
+            d5.setHireDate(LocalDate.of(2019, 11, 30));
+            d5.setKnowsJava(true);
+            d5.setKnowsSpring(true);
+
+            Developer d6 = new Developer();
+            d6.setName("Robert Plant");
+            d6.setPosition("Middle Backend");
+            d6.setSalary(70000.0);
+            d6.setHireDate(LocalDate.of(2021, 9, 12));
+            d6.setKnowsJava(false); // Не знает Java
+            d6.setKnowsSpring(false);
+
+            session.save(d1);
+            session.save(d2);
+            session.save(d3);
+            session.save(d4);
+            session.save(d5);
+            session.save(d6);
+
+            transaction.commit();
+            System.out.println("Test data: 6 developers inserted with varied profiles.");
+        }
+    }
+
     public static void demonstrateSlide5() {
         System.out.println("\n=== Demo for Slide 5: Criteria API Examples ===");
 
