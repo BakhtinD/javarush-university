@@ -72,7 +72,8 @@ public class Main {
     }
 
 
-    // В класс Main добавляем метод:
+
+
     public static void demonstrateSlide17() {
         System.out.println("\n=== Demo for Slide 17: Hibernate Transaction Interface ===");
         System.out.println("Exploring all methods of Transaction interface");
@@ -80,25 +81,30 @@ public class Main {
         // Подготовка тестовых данных
         prepareAuditLogData();
 
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        System.out.println("\n--- 1. Demonstration: begin(), commit(), rollback() ---");
+        try (Session session1 = HibernateUtil.getSessionFactory().openSession()) {
+            demoBasicTransactionMethods(session1);
+        }
 
-            System.out.println("\n--- 1. Demonstration: begin(), commit(), rollback() ---");
-            demoBasicTransactionMethods(session);
+        System.out.println("\n--- 2. Demonstration: isActive(), wasCommitted(), wasRolledBack() ---");
+        try (Session session2 = HibernateUtil.getSessionFactory().openSession()) {
+            demoTransactionStateMethods(session2);
+        }
 
-            System.out.println("\n--- 2. Demonstration: isActive(), wasCommitted(), wasRolledBack() ---");
-            demoTransactionStateMethods(session);
+        System.out.println("\n--- 3. Demonstration: setTimeout() ---");
+        try (Session session3 = HibernateUtil.getSessionFactory().openSession()) {
+            demoTransactionTimeoutMethod(session3);
+        }
 
-            System.out.println("\n--- 3. Demonstration: setTimeout() ---");
-            demoTransactionTimeoutMethod(session);
+        System.out.println("\n--- 4. Demonstration: Full Transaction Lifecycle ---");
+        try (Session session4 = HibernateUtil.getSessionFactory().openSession()) {
+            demoFullTransactionLifecycle(session4);
+        }
 
-            System.out.println("\n--- 4. Demonstration: Full Transaction Lifecycle ---");
-            demoFullTransactionLifecycle(session);
-
-            // Показываем все записи аудита
-            displayAllAuditLogs(session);
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Показываем все записи аудита (используем новую сессию)
+        System.out.println("\n--- All Audit Log Records (from database) ---");
+        try (Session session5 = HibernateUtil.getSessionFactory().openSession()) {
+            displayAllAuditLogs(session5);
         }
     }
 
@@ -107,87 +113,111 @@ public class Main {
         System.out.println("\nAnalog: Thread creation vs Thread.start()");
         System.out.println("Transaction object creation vs Transaction.begin()");
 
-        // Способ 1: Получение транзакции без запуска
-        Transaction tx1 = session.getTransaction();
-        System.out.println("\n1. session.getTransaction() - transaction object created");
-        System.out.println("   tx1.isActive() = " + tx1.isActive() + " (false - not started yet)");
+        Transaction tx1 = null;
+        Transaction tx2 = null;
 
-        // Теперь запускаем транзакцию
-        tx1.begin();
-        System.out.println("2. tx1.begin() - transaction STARTED");
-        System.out.println("   tx1.isActive() = " + tx1.isActive() + " (true - now active)");
+        try {
+            // Способ 1: Получение транзакции без запуска
+            tx1 = session.getTransaction();
+            System.out.println("\n1. session.getTransaction() - transaction object created");
+            System.out.println("   tx1.isActive() = " + tx1.isActive() + " (false - not started yet)");
 
-        // Создаем запись в логе
-        AuditLog log1 = new AuditLog();
-        log1.setActionType("TRANSACTION_TEST");
-        log1.setDescription("Testing begin() method");
-        log1.setCreatedAt(LocalDateTime.now());
-        log1.setTransactionStatus("STARTED");
+            // Теперь запускаем транзакцию
+            tx1.begin();
+            System.out.println("2. tx1.begin() - transaction STARTED");
+            System.out.println("   tx1.isActive() = " + tx1.isActive() + " (true - now active)");
 
-        session.save(log1);
-        System.out.println("3. Audit log record created (in memory, not yet in DB)");
+            // Создаем запись в логе
+            AuditLog log1 = new AuditLog();
+            log1.setActionType("TRANSACTION_TEST");
+            log1.setDescription("Testing begin() method");
+            log1.setCreatedAt(LocalDateTime.now());
+            log1.setTransactionStatus("STARTED");
 
-        // Коммитим транзакцию
-        tx1.commit();
-        System.out.println("4. tx1.commit() - transaction COMMITTED");
-        System.out.println("   tx1.isActive() = " + tx1.isActive() + " (false - completed)");
+            session.save(log1);
+            System.out.println("3. Audit log record created (in memory, not yet in DB)");
 
-        // Демонстрация rollback()
-        System.out.println("\n--- Demonstrating rollback() ---");
-        Transaction tx2 = session.beginTransaction();
-        System.out.println("5. New transaction started via session.beginTransaction()");
+            // Коммитим транзакцию
+            tx1.commit();
+            System.out.println("4. tx1.commit() - transaction COMMITTED");
+            System.out.println("   tx1.isActive() = " + tx1.isActive() + " (false - completed)");
 
-        AuditLog log2 = new AuditLog();
-        log2.setActionType("TRANSACTION_TEST");
-        log2.setDescription("This will be rolled back");
-        log2.setCreatedAt(LocalDateTime.now());
-        log2.setTransactionStatus("WILL_ROLLBACK");
+            // Демонстрация rollback()
+            System.out.println("\n--- Demonstrating rollback() ---");
+            tx2 = session.beginTransaction();
+            System.out.println("5. New transaction started via session.beginTransaction()");
 
-        session.save(log2);
-        System.out.println("6. Second audit log created");
+            AuditLog log2 = new AuditLog();
+            log2.setActionType("TRANSACTION_TEST");
+            log2.setDescription("This will be rolled back");
+            log2.setCreatedAt(LocalDateTime.now());
+            log2.setTransactionStatus("WILL_ROLLBACK");
 
-        // Имитируем ошибку и откатываем
-        tx2.rollback();
-        System.out.println("7. tx2.rollback() - transaction ROLLED BACK");
-        System.out.println("   tx2.isActive() = " + tx2.isActive() + " (false - completed)");
+            session.save(log2);
+            System.out.println("6. Second audit log created");
+
+            // Имитируем ошибку и откатываем
+            tx2.rollback();
+            System.out.println("7. tx2.rollback() - transaction ROLLED BACK");
+            System.out.println("   tx2.isActive() = " + tx2.isActive() + " (false - completed)");
+
+        } catch (Exception e) {
+            // Гарантируем откат транзакций в случае ошибки
+            if (tx1 != null && tx1.isActive()) {
+                tx1.rollback();
+            }
+            if (tx2 != null && tx2.isActive()) {
+                tx2.rollback();
+            }
+            throw e;
+        }
     }
 
     // Демонстрация 2: Методы проверки состояния
     private static void demoTransactionStateMethods(Session session) {
         System.out.println("\nTesting transaction state methods:");
 
-        Transaction tx = session.beginTransaction();
-        System.out.println("1. Transaction started");
-
-        System.out.println("2. Checking initial state:");
-        System.out.println("   isActive() = " + tx.isActive());
-
-        // Создаем тестовую запись
-        AuditLog log = new AuditLog();
-        log.setActionType("STATE_TEST");
-        log.setDescription("Testing transaction state methods");
-        log.setCreatedAt(LocalDateTime.now());
-        log.setTransactionStatus("ACTIVE");
-
-        session.save(log);
-
-        // Показываем состояние перед коммитом
-        System.out.println("\n3. Before commit:");
-        System.out.println("   isActive() = " + tx.isActive());
-
-        tx.commit();
-
-        System.out.println("\n4. After commit:");
-        System.out.println("   isActive() = " + tx.isActive());
-
-        // Попытка использовать завершенную транзакцию
-        System.out.println("\n5. Trying to use completed transaction (should fail):");
+        Transaction tx = null;
         try {
-            tx.begin(); // Попытка перезапустить завершенную транзакцию
-            System.out.println("   ERROR: Should not reach here!");
+            tx = session.beginTransaction();
+            System.out.println("1. Transaction started");
+
+            System.out.println("2. Checking initial state:");
+            System.out.println("   isActive() = " + tx.isActive());
+
+            // Создаем тестовую запись
+            AuditLog log = new AuditLog();
+            log.setActionType("STATE_TEST");
+            log.setDescription("Testing transaction state methods");
+            log.setCreatedAt(LocalDateTime.now());
+            log.setTransactionStatus("ACTIVE");
+
+            session.save(log);
+
+            // Показываем состояние перед коммитом
+            System.out.println("\n3. Before commit:");
+            System.out.println("   isActive() = " + tx.isActive());
+
+            tx.commit();
+
+            System.out.println("\n4. After commit:");
+            System.out.println("   isActive() = " + tx.isActive());
+
+            // Попытка использовать завершенную транзакцию
+            System.out.println("\n5. Trying to use completed transaction (should fail):");
+            try {
+                tx.begin(); // Попытка перезапустить завершенную транзакцию
+                System.out.println("   ERROR: Should not reach here!");
+            } catch (Exception e) {
+                System.out.println("   Expected exception: " + e.getClass().getSimpleName());
+                System.out.println("   Message: " + e.getMessage());
+            }
+
         } catch (Exception e) {
-            System.out.println("   Expected exception: " + e.getClass().getSimpleName());
-            System.out.println("   Message: " + e.getMessage());
+            if (tx != null && tx.isActive()) {
+                tx.rollback();
+            }
+            System.out.println("Transaction error: " + e.getMessage());
         }
     }
 
@@ -195,35 +225,49 @@ public class Main {
     private static void demoTransactionTimeoutMethod(Session session) {
         System.out.println("\nDemonstrating setTimeout() method:");
 
-        Transaction tx = session.beginTransaction();
-
-        // Устанавливаем таймаут 2 секунды
-        tx.setTimeout(2);
-        System.out.println("1. Transaction started with 2-second timeout");
-        System.out.println("   Timeout set via tx.setTimeout(2)");
-
-        AuditLog log = new AuditLog();
-        log.setActionType("TIMEOUT_TEST");
-        log.setDescription("Testing transaction timeout");
-        log.setCreatedAt(LocalDateTime.now());
-        log.setTransactionStatus("TIMED_OUT");
-
-        session.save(log);
-
-        System.out.println("2. Record created, waiting 3 seconds (exceeds timeout)...");
-
+        Transaction transaction = null;
         try {
-            // Имитируем долгую операцию
-            Thread.sleep(3000);
+            transaction = session.beginTransaction();
 
-            // Попытка коммита после таймаута
-            tx.commit();
-            System.out.println("3. Commit succeeded (unexpected)");
+            // Устанавливаем таймаут 2 секунды
+            transaction.setTimeout(2);
+            System.out.println("1. Transaction started with 2-second timeout");
+            System.out.println("   Timeout set via tx.setTimeout(2)");
+
+            AuditLog log = new AuditLog();
+            log.setActionType("TIMEOUT_TEST");
+            log.setDescription("Testing transaction timeout");
+            log.setCreatedAt(LocalDateTime.now());
+            log.setTransactionStatus("TIMED_OUT");
+
+            session.save(log);
+
+            System.out.println("2. Record created, waiting 3 seconds (exceeds timeout)...");
+
+            try {
+                // Имитируем долгую операцию
+                Thread.sleep(3000);
+
+                // Попытка коммита после таймаута
+                transaction.commit();
+                System.out.println("3. Commit succeeded (unexpected)");
+            } catch (Exception e) {
+                System.out.println("3. Transaction failed due to timeout: " + e.getMessage());
+
+                // Проверяем состояние
+                System.out.println("   isActive() = " + transaction.isActive());
+
+                // Явно откатываем транзакцию
+                if (transaction != null && transaction.isActive()) {
+                    transaction.rollback();
+                }
+            }
+
         } catch (Exception e) {
-            System.out.println("3. Transaction failed due to timeout: " + e.getMessage());
-
-            // Проверяем состояние
-            System.out.println("   isActive() = " + tx.isActive());
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
+            System.out.println("Transaction error: " + e.getMessage());
         }
     }
 
@@ -642,7 +686,7 @@ public class Main {
             public Object transformTuple(Object[] tuple, String[] aliases) {
                 // Создаем простой объект для хранения двух полей
                 return new Object() {
-                    public Long userId = (Long) tuple[0];
+                    public Long userId = ((Number) tuple[0]).longValue();
                     public String userName = (String) tuple[1];
 
                     @Override
@@ -906,9 +950,14 @@ public class Main {
                 .list();
 
         System.out.println("\nResults: " + books.size() + " books with authors loaded");
-        System.out.println("First book: \"" + books.get(0).getTitle() + "\"");
-        System.out.println("Author: " + books.get(0).getAuthor().getFullName());
-        System.out.println("Author email: " + books.get(0).getAuthor().getEmail());
+
+        if (!books.isEmpty()) {
+            System.out.println("First book: \"" + books.get(0).getTitle() + "\"");
+            System.out.println("Author: " + books.get(0).getAuthor().getFullName());
+            System.out.println("Author email: " + books.get(0).getAuthor().getEmail());
+        } else {
+            System.out.println("No books found matching criteria (price > 30)");
+        }
 
         // Проверяем, что связь действительно заполнена
         System.out.println("\nChecking that author association is properly loaded:");
@@ -973,8 +1022,8 @@ public class Main {
         System.out.println("\n2. NativeQuery with multi-entity mapping:");
         System.out.println("   Loading author WITH books in single query");
 
-        // Нативный запрос с немедленной загрузкой книг
-        List<Author> authorsWithBooks = session.createNativeQuery(
+        // Исправляем: получаем List<Object[]>
+        List<Object[]> results = session.createNativeQuery(
                         "SELECT {a.*}, {b.*} " +
                                 "FROM slide14_authors a " +
                                 "LEFT JOIN slide14_book_details b ON a.id = b.author_id " +
@@ -984,14 +1033,17 @@ public class Main {
                 .addJoin("b", "a.books")
                 .list();
 
-        Author loadedAuthor = authorsWithBooks.get(0);
-        System.out.println("   Author: " + loadedAuthor.getFullName());
-        System.out.println("   Books count: " + loadedAuthor.getBooks().size());
+        // Извлекаем Author из первого элемента массива
+        if (!results.isEmpty()) {
+            Author loadedAuthor = (Author) results.get(0)[0];
+            System.out.println("   Author: " + loadedAuthor.getFullName());
+            System.out.println("   Books count: " + loadedAuthor.getBooks().size());
 
-        // Показываем книги
-        System.out.println("   Books by " + loadedAuthor.getFullName() + ":");
-        for (BookDetail book : loadedAuthor.getBooks()) {
-            System.out.println("     - " + book.getTitle() + " (" + book.getPublicationYear() + ")");
+            // Показываем книги
+            System.out.println("   Books by " + loadedAuthor.getFullName() + ":");
+            for (BookDetail book : loadedAuthor.getBooks()) {
+                System.out.println("     - " + book.getTitle() + " (" + book.getPublicationYear() + ")");
+            }
         }
     }
 
@@ -1143,7 +1195,9 @@ public class Main {
 
         System.out.println("Hibernate approach count: " + hibernateResults.size());
         System.out.println("JPA approach count: " + jpaResults.size());
-        System.out.println("Results are identical: " + hibernateResults.equals(jpaResults));
+        System.out.println("Results are identical: " +
+                (hibernateResults.size() == jpaResults.size() &&
+                        hibernateResults.containsAll(jpaResults)));
 
         // Дополнительный пример с WHERE условием
         System.out.println("\n--- Additional example with WHERE clause ---");
@@ -1252,30 +1306,100 @@ public class Main {
 
     // Пример 1: SELECT * (как на слайде)
     private static void demoNativeQuerySelectAll(Session session) {
-        // Как на слайде: NativeQuery без указания класса сущности
-        List<Object[]> results = session.createNativeQuery("SELECT * FROM slide12_persons")
-                .list();
+        try {
+            System.out.println("Native SQL: SELECT * FROM slide12_persons");
 
-        System.out.println("\nResult as Object[] arrays (no entity mapping):");
-        System.out.println("=".repeat(100));
-        System.out.println(String.format("%-3s | %-12s | %-12s | %-4s | %-15s | %-15s | %-25s",
-                "ID", "First Name", "Last Name", "Age", "City", "Registration", "Email"));
-        System.out.println("-".repeat(100));
+            // Явно указываем колонки с алиасами
+            List<Object[]> results = session.createNativeQuery(
+                            "SELECT " +
+                                    "  id, " +
+                                    "  first_name, " +
+                                    "  last_name, " +
+                                    "  age, " +
+                                    "  city, " +
+                                    "  registration_date, " +
+                                    "  email " +
+                                    "FROM slide12_persons")
+                    .list();
 
-        for (Object[] row : results) {
-            // Порядок колонок соответствует порядку в таблице
-            Long id = ((Number) row[0]).longValue();        // id
-            String firstName = (String) row[1];             // first_name
-            String lastName = (String) row[2];              // last_name
-            Integer age = ((Number) row[3]).intValue();     // age
-            String city = (String) row[4];                  // city
-            java.sql.Date regDate = (java.sql.Date) row[5]; // registration_date
-            String email = row[6] != null ? (String) row[6] : "NULL"; // email (может быть null)
+            System.out.println("\nResult as Object[] arrays (no entity mapping):");
+            System.out.println("=".repeat(100));
+            System.out.println(String.format("%-3s | %-12s | %-12s | %-4s | %-15s | %-15s | %-25s",
+                    "ID", "First Name", "Last Name", "Age", "City", "Registration", "Email"));
+            System.out.println("-".repeat(100));
 
-            System.out.println(String.format("%-3d | %-12s | %-12s | %-4d | %-15s | %-15s | %-25s",
-                    id, firstName, lastName, age, city, regDate.toString(), email));
+            for (Object[] row : results) {
+                try {
+                    // Получаем значения с помощью вспомогательных методов
+                    Long id = getLongValue(row[0]);
+                    String firstName = getStringValue(row[1]);
+                    String lastName = getStringValue(row[2]);
+                    Integer age = getIntegerValue(row[3]);
+                    String city = getStringValue(row[4]);
+
+                    // Для даты
+                    String regDate = getDateValue(row[5]);
+
+                    String email = getStringValue(row[6]);
+
+                    System.out.println(String.format("%-3d | %-12s | %-12s | %-4d | %-15s | %-15s | %-25s",
+                            id, firstName, lastName, age, city, regDate, email));
+                } catch (Exception e) {
+                    System.err.println("Error processing row: " + e.getMessage());
+                    // Выводим информацию для отладки
+                    for (int i = 0; i < row.length; i++) {
+                        System.err.println("Column " + i + ": " +
+                                (row[i] != null ?
+                                        row[i].getClass().getName() + " = " + row[i] :
+                                        "null"));
+                    }
+                }
+            }
+            System.out.println("Total rows: " + results.size());
+        } catch (Exception e) {
+            System.err.println("Error executing query: " + e.getMessage());
+            e.printStackTrace();
         }
-        System.out.println("Total rows: " + results.size());
+    }
+
+    // Вспомогательные методы для получения значений
+    private static Long getLongValue(Object value) {
+        if (value == null) return 0L;
+        if (value instanceof Number) return ((Number) value).longValue();
+        try {
+            return Long.parseLong(value.toString());
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
+    }
+
+    private static Integer getIntegerValue(Object value) {
+        if (value == null) return 0;
+        if (value instanceof Number) return ((Number) value).intValue();
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static String getStringValue(Object value) {
+        if (value == null) return "NULL";
+        return value.toString();
+    }
+
+    private static String getDateValue(Object value) {
+        if (value == null) return "NULL";
+
+        if (value instanceof java.sql.Date) {
+            return ((java.sql.Date) value).toLocalDate().toString();
+        } else if (value instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) value).toLocalDateTime().toLocalDate().toString();
+        } else if (value instanceof java.util.Date) {
+            return new java.sql.Date(((java.util.Date) value).getTime()).toLocalDate().toString();
+        } else {
+            return value.toString();
+        }
     }
 
     // Пример 2: Выборка только нескольких колонок
@@ -2750,7 +2874,7 @@ public class Main {
             Transaction transaction = session.beginTransaction();
 
             // Очистка таблицы
-            session.createQuery("delete from Employee").executeUpdate();
+            session.createQuery("delete from EmployeeDaoExample").executeUpdate();
 
             // Создание тестовых данных (все на английском)
             Employee e1 = new Employee();

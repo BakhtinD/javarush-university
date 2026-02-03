@@ -6,7 +6,7 @@ import javax.persistence.*;
 @Entity
 @Table(name = "slide19_employees")
 @Data
-public class Employee {
+public class EmployeeDaoExample {  // ПЕРЕИМЕНОВАНО для избежания конфликта
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
