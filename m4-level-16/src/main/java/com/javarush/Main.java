@@ -5,6 +5,7 @@ import com.javarush.entity.slide12.Person;
 import com.javarush.entity.slide13.Book;
 import com.javarush.entity.slide14.Author;
 import com.javarush.entity.slide14.BookDetail;
+import com.javarush.entity.slide15.UserOrder;
 import com.javarush.entity.slide16.BankAccount;
 import com.javarush.entity.slide17.AuditLog;
 import com.javarush.entity.slide3.Customer;
@@ -19,14 +20,6 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.transform.ResultTransformer;
 import org.hibernate.transform.Transformers;
-
-import com.javarush.entity.slide15.UserOrder;
-import com.javarush.dto.slide15.UserStatsDTO;
-import com.javarush.dto.slide15.DenormalizedReportDTO;
-import org.hibernate.transform.ResultTransformer;
-import org.hibernate.transform.Transformers;
-import java.time.LocalDate;
-import java.math.BigDecimal;
 
 import javax.persistence.criteria.*;
 import java.math.BigDecimal;
@@ -720,42 +713,56 @@ public class Main {
     // Пример 2: Сложный DTO с агрегациями
     private static void demoComplexDtoMapping(Session session) {
         System.out.println("\nComplex DTO with aggregated user statistics");
-        System.out.println("Note: column names in SQL MUST match DTO field names");
 
-        // Используем ResultTransformer для маппинга на UserStatsDTO
-        List<com.javarush.dto.slide15.UserStatsDTO> userStats = session.createNativeQuery(
+        List<Object[]> results = session.createNativeQuery(
                         "SELECT " +
-                                "  user_id as userId, " +
-                                "  MAX(user_name) as userName, " +
-                                "  MAX(user_email) as userEmail, " +
-                                "  COUNT(*) as totalOrders, " +
-                                "  SUM(order_amount) as totalSpent, " +
-                                "  MAX(order_date) as lastOrderDate, " +
+                                "  user_id, " +
+                                "  MAX(user_name), " +
+                                "  MAX(user_email), " +
+                                "  COUNT(*), " +
+                                "  SUM(order_amount), " +
+                                "  MAX(order_date), " +
                                 "  (SELECT product_category FROM slide15_user_orders sub " +
                                 "   WHERE sub.user_id = main.user_id " +
-                                "   GROUP BY product_category ORDER BY COUNT(*) DESC LIMIT 1) as mostPurchasedCategory " +
+                                "   GROUP BY product_category ORDER BY COUNT(*) DESC LIMIT 1) " +
                                 "FROM slide15_user_orders main " +
                                 "GROUP BY user_id " +
-                                "ORDER BY totalSpent DESC"
+                                "ORDER BY SUM(order_amount) DESC"
                 )
-                .setResultTransformer(Transformers.aliasToBean(com.javarush.dto.slide15.UserStatsDTO.class))
                 .list();
 
-        System.out.println("\nUser Statistics DTOs:");
+        System.out.println("\nUser Statistics:");
         System.out.println("=".repeat(100));
         System.out.println(String.format("%-8s | %-15s | %-25s | %-12s | %-12s | %-12s | %-20s",
                 "User ID", "Name", "Email", "Total Orders", "Total Spent", "Last Order", "Top Category"));
         System.out.println("-".repeat(100));
 
-        for (com.javarush.dto.slide15.UserStatsDTO dto : userStats) {
+        for (Object[] row : results) {
+            Long userId = row[0] != null ? ((Number) row[0]).longValue() : null;
+            String userName = row[1] != null ? row[1].toString() : "N/A";
+            String userEmail = row[2] != null ? row[2].toString() : "N/A";
+            Long totalOrders = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+            BigDecimal totalSpent = row[4] != null ?
+                    (row[4] instanceof BigDecimal ? (BigDecimal) row[4] :
+                            new BigDecimal(((Number) row[4]).doubleValue())) : BigDecimal.ZERO;
+            String lastOrderDate = "N/A";
+            if (row[5] != null) {
+                if (row[5] instanceof java.sql.Date) {
+                    lastOrderDate = ((java.sql.Date) row[5]).toLocalDate().toString();
+                } else if (row[5] instanceof java.sql.Timestamp) {
+                    lastOrderDate = ((java.sql.Timestamp) row[5]).toLocalDateTime().toLocalDate().toString();
+                }
+            }
+            String mostPurchasedCategory = row[6] != null ? row[6].toString() : "N/A";
+
             System.out.println(String.format("%-8d | %-15s | %-25s | %-12d | $%-11.2f | %-12s | %-20s",
-                    dto.getUserId(),
-                    dto.getUserName(),
-                    dto.getUserEmail(),
-                    dto.getTotalOrders(),
-                    dto.getTotalSpent(),
-                    dto.getLastOrderDate(),
-                    dto.getMostPurchasedCategory()
+                    userId,
+                    userName,
+                    userEmail,
+                    totalOrders,
+                    totalSpent,
+                    lastOrderDate,
+                    mostPurchasedCategory
             ));
         }
     }
@@ -791,7 +798,7 @@ public class Main {
 
         System.out.println("\nDenormalized Report DTOs:");
         System.out.println("=".repeat(90));
-        for (DenormalizedReportDTO report : reports) {
+        for (com.javarush.dto.slide15.DenormalizedReportDTO report : reports) {
             System.out.println(String.format("Department: %s", report.getDepartmentName()));
             System.out.println(String.format("  Manager: %s, Employees: %d",
                     report.getManagerName(), report.getEmployeeCount()));

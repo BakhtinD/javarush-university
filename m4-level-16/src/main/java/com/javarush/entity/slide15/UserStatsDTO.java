@@ -1,7 +1,8 @@
-package com.javarush.dto.slide15;
+package com.javarush.entity.slide15;
 
 import lombok.Data;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDate;
 
 // Обычный Java-класс без аннотаций JPA
@@ -11,7 +12,7 @@ public class UserStatsDTO {
     private Long userId;
     private String userName;
     private String userEmail;
-    private Integer totalOrders;
+    private BigInteger totalOrders;
     private BigDecimal totalSpent;
     private LocalDate lastOrderDate;
     private String mostPurchasedCategory;
