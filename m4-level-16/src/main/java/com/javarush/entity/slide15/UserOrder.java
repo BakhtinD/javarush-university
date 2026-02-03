@@ -1,4 +1,3 @@
-// src/main/java/com/javarush/entity/slide15/UserOrder.java
 package com.javarush.entity.slide15;
 
 import lombok.Data;

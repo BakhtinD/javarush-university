@@ -1,4 +1,3 @@
-// src/main/java/com/javarush/entity/slide17/AuditLog.java
 package com.javarush.entity.slide17;
 
 import lombok.Data;

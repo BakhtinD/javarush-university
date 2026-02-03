@@ -1,4 +1,4 @@
-package com.javarush.dto.slide15;
+package com.javarush.entity.slide15;
 
 import lombok.Data;
 import java.math.BigDecimal;
