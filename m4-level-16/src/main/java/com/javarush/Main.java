@@ -8,6 +8,8 @@ import com.javarush.entity.slide14.BookDetail;
 import com.javarush.entity.slide15.UserOrder;
 import com.javarush.entity.slide16.BankAccount;
 import com.javarush.entity.slide17.AuditLog;
+import com.javarush.entity.slide19.NewProject;
+import com.javarush.entity.slide19.dao.ProjectDAO;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -26,6 +28,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public class Main {
 
@@ -59,13 +62,67 @@ public class Main {
 
         demonstrateSlide17();
 
-        // demonstrateSlide19();
+        demonstrateSlide19();
 
         HibernateUtil.shutdown();
     }
 
 
+    public static void demonstrateSlide19() {
+        System.out.println("=== Slide 18 Demonstration: DAO Pattern ===");
 
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Инициализируем DAO, передавая ему сессию
+            ProjectDAO projectDAO = new ProjectDAO(session);
+
+            // Начинаем транзакцию для сохранения данных
+            session.beginTransaction();
+
+            // Создаем и сохраняем тестовые проекты
+            NewProject alpha = new NewProject();
+            alpha.setName("Alpha");
+            alpha.setBudget(50000);
+            projectDAO.saveProject(alpha);
+
+            NewProject beta = new NewProject();
+            beta.setName("Beta");
+            beta.setBudget(100000);
+            projectDAO.saveProject(beta);
+
+            NewProject gamma = new NewProject();
+            gamma.setName("Gamma");
+            gamma.setBudget(75000);
+            projectDAO.saveProject(gamma);
+
+            session.getTransaction().commit();
+            System.out.println("Test projects saved.");
+
+            // Демонстрация работы методов DAO
+            System.out.println("\n1. Total project count: " + projectDAO.getTotalProjectCount());
+
+            System.out.println("\n2. First 2 projects (pagination):");
+            List<NewProject> firstTwo = projectDAO.getProjectList(0, 2);
+            firstTwo.forEach(p -> System.out.println("   - " + p.getName() + " ($" + p.getBudget() + ")"));
+
+            System.out.println("\n3. Search for project 'Beta':");
+            Optional<NewProject> foundProject = projectDAO.getProjectByName("Beta");
+            foundProject.ifPresentOrElse(
+                    p -> System.out.println("   Found: " + p.getName() + " with budget $" + p.getBudget()),
+                    () -> System.out.println("   Project not found.")
+            );
+
+            System.out.println("\n4. Search for non-existent project 'Delta':");
+            Optional<NewProject> notFound = projectDAO.getProjectByName("Delta");
+            notFound.ifPresentOrElse(
+                    p -> System.out.println("   Found: " + p.getName()),
+                    () -> System.out.println("   Project not found (Optional is empty).")
+            );
+
+        } catch (Exception e) {
+            System.err.println("Error during DAO demonstration: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     public static void demonstrateSlide17() {
         System.out.println("\n=== Demo for Slide 17: Hibernate Transaction Interface ===");
@@ -2275,7 +2332,7 @@ public class Main {
             Transaction transaction = session.beginTransaction();
 
             // Очистка таблицы
-            session.createQuery("delete from Project").executeUpdate();
+            session.createQuery("delete from NewProject").executeUpdate();
 
             // Создание тестовых данных
             Project p1 = new Project();

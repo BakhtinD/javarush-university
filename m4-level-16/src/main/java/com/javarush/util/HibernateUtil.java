@@ -1,5 +1,6 @@
 package com.javarush.util;
 
+import com.javarush.entity.slide19.NewProject;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
@@ -70,6 +71,8 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide15.UserOrder.class);
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide16.BankAccount.class);
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide17.AuditLog.class);
+
+                metadataSources.addAnnotatedClass(NewProject.class);
 
 
                 Metadata metadata = metadataSources.buildMetadata();
