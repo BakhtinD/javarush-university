@@ -72,6 +72,10 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide16.BankAccount.class);
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide17.AuditLog.class);
 
+                metadataSources.addAnnotatedClass(com.javarush.entity.slide19.NewProject.class);
+
+                metadataSources.addAnnotatedClass(com.javarush.entity.slide22.Task.class);
+
                 metadataSources.addAnnotatedClass(NewProject.class);
 
 

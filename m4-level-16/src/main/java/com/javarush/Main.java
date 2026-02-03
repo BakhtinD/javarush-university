@@ -10,6 +10,8 @@ import com.javarush.entity.slide16.BankAccount;
 import com.javarush.entity.slide17.AuditLog;
 import com.javarush.entity.slide19.NewProject;
 import com.javarush.entity.slide19.dao.ProjectDAO;
+import com.javarush.entity.slide22.Task;
+import com.javarush.entity.slide22.TaskDAO;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -64,9 +66,73 @@ public class Main {
 
         demonstrateSlide19();
 
+        demonstrateSlide22();
+
         HibernateUtil.shutdown();
     }
 
+    public static void demonstrateSlide22() {
+        System.out.println("=== Slide 22 Demonstration: Generic DAO ===");
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            // Создаем конкретный DAO. Он уже имеет все CRUD-методы.
+            TaskDAO taskDAO = new TaskDAO(session);
+
+            session.beginTransaction();
+
+            // Создаем и сохраняем тестовые задачи через метод save() из GenericDAO
+            Task task1 = new Task();
+            task1.setTitle("Learn Hibernate");
+            taskDAO.save(task1);
+
+            Task task2 = new Task();
+            task2.setTitle("Write GenericDAO example");
+            task2.setCompleted(true);
+            taskDAO.save(task2);
+
+            Task task3 = new Task();
+            task3.setTitle("Prepare webinar slides");
+            taskDAO.save(task3);
+
+            Task task4 = new Task();
+            task4.setTitle("Review Criteria API");
+            task4.setCompleted(true);
+            taskDAO.save(task4);
+
+            session.getTransaction().commit();
+            System.out.println("Test tasks saved.");
+
+            // Демонстрация стандартных методов из GenericDAO
+            System.out.println("\n1. Total tasks count (getCount()): " + taskDAO.getCount());
+
+            System.out.println("\n2. Get task by ID=2 (getById()):");
+            taskDAO.getById(2L).ifPresent(t -> System.out.println("   " + t.getTitle() + " - Completed: " + t.getCompleted()));
+
+            System.out.println("\n3. First 2 tasks (getItems(0, 2)):");
+            taskDAO.getItems(0, 2).forEach(t -> System.out.println("   - " + t.getTitle()));
+
+            System.out.println("\n4. All tasks (getAll()):");
+            taskDAO.getAll().forEach(t -> System.out.println("   [" + t.getId() + "] " + t.getTitle()));
+
+            // Демонстрация специфичных методов из TaskDAO
+            System.out.println("\n5. Completed tasks (findCompletedTasks() - specific method):");
+            taskDAO.findCompletedTasks().forEach(t -> System.out.println("   " + t.getTitle()));
+
+            System.out.println("\n6. Tasks with 'API' in title (findTasksByTitleKeyword() - specific method):");
+            taskDAO.findTasksByTitleKeyword("API").forEach(t -> System.out.println("   " + t.getTitle()));
+
+            // Демонстрация удаления через метод из GenericDAO
+            session.beginTransaction();
+            System.out.println("\n7. Deleting task with ID=3 (deleteById()):");
+            taskDAO.deleteById(3L);
+            session.getTransaction().commit();
+            System.out.println("   Deleted. New total count: " + taskDAO.getCount());
+
+        } catch (Exception e) {
+            System.err.println("Error during Generic DAO demonstration: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     public static void demonstrateSlide19() {
         System.out.println("=== Slide 18 Demonstration: DAO Pattern ===");
