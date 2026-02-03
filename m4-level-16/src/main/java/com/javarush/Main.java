@@ -2,6 +2,7 @@ package com.javarush;
 
 import com.javarush.entity.slide10.ProductStock;
 import com.javarush.entity.slide12.Person;
+import com.javarush.entity.slide13.Book;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -40,8 +41,152 @@ public class Main {
         demonstrateSlide10();
 
         demonstrateSlide12();
+
+        demonstrateSlide13();
         
         HibernateUtil.shutdown();
+    }
+
+    // В класс Main добавляем метод:
+    public static void demonstrateSlide13() {
+        System.out.println("\n=== Demo for Slide 13: NativeQuery Entity Mapping ===");
+        System.out.println("Showing both Hibernate and JPA approaches for entity mapping");
+
+        // Подготовка тестовых данных
+        prepareBookData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            System.out.println("\n--- Approach 1: Hibernate style (addEntity) ---");
+            demoHibernateStyleMapping(session);
+
+            System.out.println("\n--- Approach 2: JPA style (parameter in method) ---");
+            demoJpaStyleMapping(session);
+
+            System.out.println("\n--- Comparison: Both approaches give same results ---");
+            compareBothApproaches(session);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Способ 1: Стиль Hibernate (исторический)
+    private static void demoHibernateStyleMapping(Session session) {
+        System.out.println("Query<Book> query = session.createNativeQuery(\"SELECT * FROM slide13_books\")");
+        System.out.println("                     .addEntity(Book.class);");
+
+        // Hibernate подход: отдельный вызов addEntity()
+        org.hibernate.query.Query<Book> query = session.createNativeQuery("SELECT * FROM slide13_books")
+                .addEntity(Book.class);
+
+        List<Book> books = query.list();
+
+        System.out.println("Results: " + books.size() + " Book entities");
+        System.out.println("First book: \"" + books.get(0).getTitle() + "\" by " + books.get(0).getAuthor());
+    }
+
+    // Способ 2: Стиль JPA (современный)
+    private static void demoJpaStyleMapping(Session session) {
+        System.out.println("List<Book> books = session.createNativeQuery(");
+        System.out.println("    \"SELECT * FROM slide13_books\", Book.class).list();");
+
+        // JPA подход: класс сущности передается как параметр
+        List<Book> books = session.createNativeQuery(
+                "SELECT * FROM slide13_books", Book.class
+        ).list();
+
+        System.out.println("Results: " + books.size() + " Book entities");
+        System.out.println("First book: \"" + books.get(0).getTitle() + "\" by " + books.get(0).getAuthor());
+    }
+
+    // Сравнение обоих подходов
+    private static void compareBothApproaches(Session session) {
+        System.out.println("\nExecuting both queries and comparing results...");
+
+        // Подход Hibernate
+        List<Book> hibernateResults = session.createNativeQuery("SELECT * FROM slide13_books WHERE price > 20")
+                .addEntity(Book.class)
+                .list();
+
+        // Подход JPA
+        List<Book> jpaResults = session.createNativeQuery(
+                "SELECT * FROM slide13_books WHERE price > 20", Book.class
+        ).list();
+
+        System.out.println("Hibernate approach count: " + hibernateResults.size());
+        System.out.println("JPA approach count: " + jpaResults.size());
+        System.out.println("Results are identical: " + hibernateResults.equals(jpaResults));
+
+        // Дополнительный пример с WHERE условием
+        System.out.println("\n--- Additional example with WHERE clause ---");
+
+        // JPA стиль с параметром
+        List<Book> expensiveBooks = session.createNativeQuery(
+                        "SELECT * FROM slide13_books WHERE price > :minPrice AND in_stock = true",
+                        Book.class
+                )
+                .setParameter("minPrice", new BigDecimal("25.00"))
+                .list();
+
+        System.out.println("Expensive books in stock: " + expensiveBooks.size());
+        for (Book book : expensiveBooks) {
+            System.out.println("  - " + book.getTitle() + " ($" + book.getPrice() + ")");
+        }
+    }
+
+    private static void prepareBookData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from Book").executeUpdate();
+
+            // Создание тестовых данных
+            Book b1 = new Book();
+            b1.setTitle("Effective Java");
+            b1.setAuthor("Joshua Bloch");
+            b1.setPrice(new BigDecimal("45.99"));
+            b1.setPublishedDate(LocalDate.of(2018, 1, 1));
+            b1.setInStock(true);
+
+            Book b2 = new Book();
+            b2.setTitle("Clean Code");
+            b2.setAuthor("Robert Martin");
+            b2.setPrice(new BigDecimal("39.99"));
+            b2.setPublishedDate(LocalDate.of(2008, 8, 1));
+            b2.setInStock(true);
+
+            Book b3 = new Book();
+            b3.setTitle("Java Concurrency in Practice");
+            b3.setAuthor("Brian Goetz");
+            b3.setPrice(new BigDecimal("54.99"));
+            b3.setPublishedDate(LocalDate.of(2006, 5, 19));
+            b3.setInStock(false);
+
+            Book b4 = new Book();
+            b4.setTitle("Head First Design Patterns");
+            b4.setAuthor("Eric Freeman");
+            b4.setPrice(new BigDecimal("32.50"));
+            b4.setPublishedDate(LocalDate.of(2004, 10, 25));
+            b4.setInStock(true);
+
+            Book b5 = new Book();
+            b5.setTitle("The Java Programming Language");
+            b5.setAuthor("James Gosling");
+            b5.setPrice(new BigDecimal("19.99"));
+            b5.setPublishedDate(LocalDate.of(2005, 6, 15));
+            b5.setInStock(true);
+
+            session.save(b1);
+            session.save(b2);
+            session.save(b3);
+            session.save(b4);
+            session.save(b5);
+
+            transaction.commit();
+            System.out.println("Test data: 5 books inserted.");
+        }
     }
 
     public static void demonstrateSlide12() {

@@ -64,7 +64,7 @@ public class HibernateUtil {
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide9.SalesRecord.class);
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide10.ProductStock.class);
                 metadataSources.addAnnotatedClass(com.javarush.entity.slide12.Person.class);
-
+                metadataSources.addAnnotatedClass(com.javarush.entity.slide13.Book.class);
 
                 Metadata metadata = metadataSources.buildMetadata();
                 sessionFactory = metadata.buildSessionFactory();
