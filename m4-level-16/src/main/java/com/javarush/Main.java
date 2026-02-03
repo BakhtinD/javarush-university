@@ -1,6 +1,7 @@
 package com.javarush;
 
 import com.javarush.entity.slide10.ProductStock;
+import com.javarush.entity.slide12.Person;
 import com.javarush.entity.slide3.Customer;
 import com.javarush.entity.slide4.Product;
 import com.javarush.entity.slide5.Employee;
@@ -38,10 +39,247 @@ public class Main {
 
         demonstrateSlide10();
 
+        demonstrateSlide12();
+        
         HibernateUtil.shutdown();
     }
 
-    // В класс Main добавляем метод:
+    public static void demonstrateSlide12() {
+        System.out.println("\n=== Demo for Slide 12: NativeQuery without Entity Mapping ===");
+        System.out.println("Using NativeQuery with Object[] result (as shown on slide)");
+
+        // Подготовка тестовых данных
+        preparePersonData();
+
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+            System.out.println("\n--- Example 1: SELECT * (as shown on slide) ---");
+            System.out.println("Native SQL: SELECT * FROM slide12_persons");
+            demoNativeQuerySelectAll(session);
+
+            System.out.println("\n--- Example 2: SELECT specific columns ---");
+            System.out.println("Native SQL: SELECT first_name, last_name, city, age FROM slide12_persons");
+            demoNativeQueryPartialSelect(session);
+
+            System.out.println("\n--- Example 3: SELECT with aggregation ---");
+            System.out.println("Native SQL: SELECT city, COUNT(*), AVG(age) FROM slide12_persons GROUP BY city");
+            demoNativeQueryWithAggregation(session);
+
+            System.out.println("\n--- Example 4: SELECT with complex SQL function ---");
+            System.out.println("Native SQL: Using database-specific function (CONCAT for MySQL)");
+            demoNativeQueryWithSqlFunctions(session);
+
+            System.out.println("\n--- Example 5: Comparing with HQL approach ---");
+            System.out.println("Same query using HQL vs NativeQuery");
+            compareWithHql(session);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Пример 1: SELECT * (как на слайде)
+    private static void demoNativeQuerySelectAll(Session session) {
+        // Как на слайде: NativeQuery без указания класса сущности
+        List<Object[]> results = session.createNativeQuery("SELECT * FROM slide12_persons")
+                .list();
+
+        System.out.println("\nResult as Object[] arrays (no entity mapping):");
+        System.out.println("=".repeat(100));
+        System.out.println(String.format("%-3s | %-12s | %-12s | %-4s | %-15s | %-15s | %-25s",
+                "ID", "First Name", "Last Name", "Age", "City", "Registration", "Email"));
+        System.out.println("-".repeat(100));
+
+        for (Object[] row : results) {
+            // Порядок колонок соответствует порядку в таблице
+            Long id = ((Number) row[0]).longValue();        // id
+            String firstName = (String) row[1];             // first_name
+            String lastName = (String) row[2];              // last_name
+            Integer age = ((Number) row[3]).intValue();     // age
+            String city = (String) row[4];                  // city
+            java.sql.Date regDate = (java.sql.Date) row[5]; // registration_date
+            String email = row[6] != null ? (String) row[6] : "NULL"; // email (может быть null)
+
+            System.out.println(String.format("%-3d | %-12s | %-12s | %-4d | %-15s | %-15s | %-25s",
+                    id, firstName, lastName, age, city, regDate.toString(), email));
+        }
+        System.out.println("Total rows: " + results.size());
+    }
+
+    // Пример 2: Выборка только нескольких колонок
+    private static void demoNativeQueryPartialSelect(Session session) {
+        // Выбираем только 4 колонки вместо всей таблицы
+        List<Object[]> results = session.createNativeQuery(
+                "SELECT first_name, last_name, city, age FROM slide12_persons ORDER BY city, last_name"
+        ).list();
+
+        System.out.println("\nPartial select - only 4 columns:");
+        System.out.println("=".repeat(55));
+        System.out.println(String.format("%-12s | %-12s | %-15s | %-4s",
+                "First Name", "Last Name", "City", "Age"));
+        System.out.println("-".repeat(55));
+
+        for (Object[] row : results) {
+            String firstName = (String) row[0];         // first_name
+            String lastName = (String) row[1];          // last_name
+            String city = (String) row[2];              // city
+            Integer age = ((Number) row[3]).intValue(); // age
+
+            System.out.println(String.format("%-12s | %-12s | %-15s | %-4d",
+                    firstName, lastName, city, age));
+        }
+    }
+
+    // Пример 3: Агрегация с GROUP BY
+    private static void demoNativeQueryWithAggregation(Session session) {
+        List<Object[]> results = session.createNativeQuery(
+                "SELECT city, COUNT(*) as person_count, AVG(age) as avg_age " +
+                        "FROM slide12_persons " +
+                        "GROUP BY city " +
+                        "ORDER BY person_count DESC"
+        ).list();
+
+        System.out.println("\nAggregation with GROUP BY:");
+        System.out.println("=".repeat(50));
+        System.out.println(String.format("%-15s | %-13s | %-10s",
+                "City", "Person Count", "Avg Age"));
+        System.out.println("-".repeat(50));
+
+        for (Object[] row : results) {
+            String city = (String) row[0];                     // city
+            Long count = ((Number) row[1]).longValue();        // COUNT(*)
+            Double avgAge = ((Number) row[2]).doubleValue();   // AVG(age)
+
+            System.out.println(String.format("%-15s | %-13d | %-10.1f",
+                    city, count, avgAge));
+        }
+    }
+
+    // Пример 4: Использование специфичных SQL-функций
+    private static void demoNativeQueryWithSqlFunctions(Session session) {
+        // Используем CONCAT - специфичная функция MySQL
+        List<Object[]> results = session.createNativeQuery(
+                "SELECT CONCAT(first_name, ' ', last_name) as full_name, " +
+                        "city, " +
+                        "TIMESTAMPDIFF(YEAR, registration_date, CURDATE()) as years_registered " +
+                        "FROM slide12_persons " +
+                        "WHERE email IS NOT NULL " +
+                        "ORDER BY years_registered DESC"
+        ).list();
+
+        System.out.println("\nUsing database-specific SQL functions (MySQL CONCAT, TIMESTAMPDIFF):");
+        System.out.println("=".repeat(70));
+        System.out.println(String.format("%-25s | %-15s | %-15s",
+                "Full Name", "City", "Years Registered"));
+        System.out.println("-".repeat(70));
+
+        for (Object[] row : results) {
+            String fullName = (String) row[0];          // CONCAT result
+            String city = (String) row[1];              // city
+            Long yearsRegistered = ((Number) row[2]).longValue(); // TIMESTAMPDIFF result
+
+            System.out.println(String.format("%-25s | %-15s | %-15d",
+                    fullName, city, yearsRegistered));
+        }
+    }
+
+    // Пример 5: Сравнение с HQL
+    private static void compareWithHql(Session session) {
+        System.out.println("\nComparison: HQL vs NativeQuery for same result");
+
+        // Способ 1: HQL (нужна сущность Person)
+        List<Person> hqlResults = session.createQuery(
+                "SELECT p FROM Person p WHERE p.age > 25 ORDER BY p.city", Person.class
+        ).list();
+
+        System.out.println("\nHQL approach (returns Person entities):");
+        System.out.println("Query: SELECT p FROM Person p WHERE p.age > 25 ORDER BY p.city");
+        System.out.println("Results: " + hqlResults.size() + " Person objects");
+
+        // Способ 2: NativeQuery (только данные, без сущностей)
+        List<Object[]> nativeResults = session.createNativeQuery(
+                "SELECT first_name, last_name, city, age FROM slide12_persons " +
+                        "WHERE age > 25 ORDER BY city"
+        ).list();
+
+        System.out.println("\nNativeQuery approach (returns Object[] arrays):");
+        System.out.println("Query: SELECT first_name, last_name, city, age FROM slide12_persons WHERE age > 25 ORDER BY city");
+        System.out.println("Results: " + nativeResults.size() + " Object[] rows");
+        System.out.println("\nMemory/Performance consideration:");
+        System.out.println("- HQL: Creates full Person entities with lifecycle management");
+        System.out.println("- NativeQuery: Simple data transfer, no entity overhead");
+    }
+
+    private static void preparePersonData() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+
+            // Очистка таблицы
+            session.createQuery("delete from Person").executeUpdate();
+
+            // Создание тестовых данных
+            LocalDate baseDate = LocalDate.of(2020, 1, 1);
+
+            Person p1 = new Person();
+            p1.setFirstName("John");
+            p1.setLastName("Smith");
+            p1.setAge(30);
+            p1.setCity("New York");
+            p1.setRegistrationDate(baseDate.plusMonths(2));
+            p1.setEmail("john.smith@email.com");
+
+            Person p2 = new Person();
+            p2.setFirstName("Emma");
+            p2.setLastName("Wilson");
+            p2.setAge(25);
+            p2.setCity("London");
+            p2.setRegistrationDate(baseDate.plusMonths(5));
+            p2.setEmail("emma.wilson@email.com");
+
+            Person p3 = new Person();
+            p3.setFirstName("Alex");
+            p3.setLastName("Johnson");
+            p3.setAge(35);
+            p3.setCity("New York");
+            p3.setRegistrationDate(baseDate.plusMonths(8));
+            p3.setEmail(null); // NULL email
+
+            Person p4 = new Person();
+            p4.setFirstName("Michael");
+            p4.setLastName("Brown");
+            p4.setAge(28);
+            p4.setCity("Berlin");
+            p4.setRegistrationDate(baseDate.plusMonths(12));
+            p4.setEmail("michael.b@email.com");
+
+            Person p5 = new Person();
+            p5.setFirstName("Sarah");
+            p5.setLastName("Davis");
+            p5.setAge(42);
+            p5.setCity("London");
+            p5.setRegistrationDate(baseDate.plusMonths(3));
+            p5.setEmail("sarah.davis@email.com");
+
+            Person p6 = new Person();
+            p6.setFirstName("Robert");
+            p6.setLastName("Taylor");
+            p6.setAge(22);
+            p6.setCity("Paris");
+            p6.setRegistrationDate(baseDate.plusMonths(15));
+            p6.setEmail("robert.t@email.com");
+
+            session.save(p1);
+            session.save(p2);
+            session.save(p3);
+            session.save(p4);
+            session.save(p5);
+            session.save(p6);
+
+            transaction.commit();
+            System.out.println("Test data: 6 persons inserted with varied attributes.");
+        }
+    }
+
     public static void demonstrateSlide10() {
         System.out.println("\n=== Demo for Slide 10: CriteriaUpdate and CriteriaDelete ===");
 
