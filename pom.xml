@@ -78,6 +78,7 @@
         <module>m3-level-16</module>
         <module>m3-level-10</module>
         <module>m5-level-01</module>
+        <module>m5-level-02</module>
     </modules>
 
     <properties>
