@@ -23,6 +23,11 @@ public class HttpMethodsExample {
         // 2. POST-запрос — создать новый ресурс
         System.out.println("\n=== POST-запрос ===");
         String postBody = "{\"title\": \"foo\", \"body\": \"bar\", \"userId\": 1}";
+        // "{
+        //   "title":  "foo",
+        //   "body":   "bar",
+        //   "userId": 1
+        //   }"
         HttpRequest postRequest = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl))
                 .header("Content-Type", "application/json")
