@@ -1,6 +1,7 @@
 package com.javarush.controller;
 
 import com.javarush.entity.User;
+import com.javarush.exception.BusinessException;
 import com.javarush.repository.UserRepository;
 import com.javarush.service.UserService;
 import lombok.AllArgsConstructor;
@@ -36,5 +37,21 @@ public class HelloController {
         return ResponseEntity.ok("Emails updated successfully");
     }
 
+    @PostMapping("/users/{id}/email")
+    public ResponseEntity<String> updateEmailWithChecked(@PathVariable Long id, @RequestParam String email) {
+        try {
+            userService.updateUserEmailWithChecked(id, email);
+            return ResponseEntity.ok("Email updated successfully");
+        } catch (BusinessException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/users")
+    public List<User> getUsers() {
+        // Используем readOnly-метод сервиса
+        return userService.getAllUsers();
+    }
 
 }

@@ -1,10 +1,13 @@
 package com.javarush.service;
 
 import com.javarush.entity.User;
+import com.javarush.exception.BusinessException;
 import com.javarush.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -35,4 +38,23 @@ public class UserService {
 
     }
 
+    // Метод, который выбрасывает checked исключение после сохранения
+    @Transactional
+    public void updateUserEmailWithChecked(Long id, String newEmail) throws BusinessException {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found: " + id));
+        user.setEmail(newEmail);
+        userRepository.save(user);
+
+        // Имитируем бизнес-ошибку — checked исключение
+        throw new BusinessException("Business error after update");
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+
 }
+

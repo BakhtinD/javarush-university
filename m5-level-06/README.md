@@ -15,7 +15,15 @@ curl -X POST "http://localhost:8080/users/update-emails?id1=1&id2=2&email1=alice
   -H "Content-Type: application/json"
 ```
 
+Метод, который выбрасывает checked исключение после сохранения
+```bash
+curl -X POST "http://localhost:8080/users/1/email?email=alice.default@example.com"
+```
 
+Получение всех пользователей (GET)
+```bash
+curl -s http://localhost:8080/users | jq .
+```
 
 ### References 
 1. Ветка с заготовкой spring-data-jpa & CRUD https://github.com/sproshchaev/javarush-university/blob/m5-level-06-spring-data-jpa/m5-level-06/README.md  
