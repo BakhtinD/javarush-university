@@ -3,6 +3,7 @@ package com.javarush.controller;
 import com.javarush.entity.User;
 import com.javarush.exception.BusinessException;
 import com.javarush.repository.UserRepository;
+import com.javarush.service.RegistrationService;
 import com.javarush.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class HelloController {
 
     private final UserRepository userRepository;
     private final UserService userService;
+    private final RegistrationService registrationService;
 
     @GetMapping("/")
     public String sayHello() {
@@ -52,6 +54,17 @@ public class HelloController {
     public List<User> getUsers() {
         // Используем readOnly-метод сервиса
         return userService.getAllUsers();
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestParam String name, @RequestParam String email) {
+        try {
+            registrationService.registerUser(name, email);
+            return ResponseEntity.ok("User registered successfully");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Registration failed: " + e.getMessage());
+        }
     }
 
 }

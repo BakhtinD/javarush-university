@@ -25,5 +25,10 @@ curl -X POST "http://localhost:8080/users/1/email?email=alice.default@example.co
 curl -s http://localhost:8080/users | jq .
 ```
 
+Сервис RegistrationService с использованием TransactionTemplate
+```bash
+curl -X POST "http://localhost:8080/register?name=John&email=john@example.com"
+```
+
 ### References 
 1. Ветка с заготовкой spring-data-jpa & CRUD https://github.com/sproshchaev/javarush-university/blob/m5-level-06-spring-data-jpa/m5-level-06/README.md  
