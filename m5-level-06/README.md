@@ -42,3 +42,6 @@ curl -s -X PUT http://localhost:8080/users/2 \
   -H "Content-Type: application/json" \
   -d '{"name": "Alice Updated", "email": "alice.new@example.com"}' | jq .
 ```
+
+### References 
+1. Ветка с заготовкой spring-data-jpa & CRUD https://github.com/sproshchaev/javarush-university/blob/m5-level-06-spring-data-jpa/m5-level-06/README.md  
