@@ -22,10 +22,23 @@ public class HelloWorldServlet extends HttpServlet {
         // Получаем выходной поток для отправки данных клиенту
         PrintWriter out = response.getWriter();
 
+//        <!DOCTYPE html>
+//        <html>
+//           <head>
+//             --- заголовок страницы (опционально) ---
+//             <title>Наименование заголовка страницы</title>
+//           </head>
+//           <body>
+//                --- тело страницы ---
+//           </body>
+//           --- может еще быть футер ---
+//        </html>
+
+
         // Пишем простую HTML-страницу в ответ
         out.println("<html><body>");
         out.println("<h1>Привет, мир от HttpServlet!</h1>");
-        out.println("<p>Это ответ на ваш GET-запрос.</p>");
+        out.println("<p>Это ответ на ваш GET-запрос :) </p>");
         out.println("</body></html>");
     }
 
