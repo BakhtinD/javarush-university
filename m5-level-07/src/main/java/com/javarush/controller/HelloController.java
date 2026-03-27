@@ -19,10 +19,10 @@ public class HelloController {
         this.userRepository = userRepository;
     }
 
-    @GetMapping("/")
-    public String sayHello() {
-        return "Hello World!";
-    }
+//    @GetMapping("/")
+//    public String sayHello() {
+//        return "Hello World!";
+//    }
 
     @GetMapping("/users")
     public List<User> getUsers() {
