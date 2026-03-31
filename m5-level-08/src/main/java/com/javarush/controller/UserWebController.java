@@ -2,6 +2,7 @@ package com.javarush.controller;
 
 import com.javarush.dto.CreateUserDto;
 import com.javarush.entity.User;
+import com.javarush.exception.ResourceNotFoundException;
 import com.javarush.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,14 @@ public class UserWebController {
             model.addAttribute("users", userRepository.findAll());
         }
         return "user-list";
+    }
+
+    @GetMapping("/{id}")
+    public String getUserDetails(@PathVariable Long id, Model model) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь с ID " + id + " не найден"));
+        model.addAttribute("user", user);
+        return "user-details";
     }
 
 }

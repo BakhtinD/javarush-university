@@ -29,6 +29,9 @@
              <td th:text="${user.id}"></td>
              <td th:text="${user.name}"></td>
              <td th:text="${user.email}"></td>
+             <td>
+                <a th:href="@{/users-web/{id}(id=${user.id})}">Подробнее</a>
+             </td>
         </tr>
     </table>
 
