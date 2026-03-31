@@ -6,6 +6,11 @@
 </head>
 <body>
     <h1>Список пользователей</h1>
+
+    <p>
+        <a th:href="@{/users-web/new}">Добавить нового пользователя</a>
+    </p>
+
     <form th:action="@{/users-web/list}" method="get">
         <label>Поиск по имени:
             <input type="text" name="name" th:value="${searchName}">

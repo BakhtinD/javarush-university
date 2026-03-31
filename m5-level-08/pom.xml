@@ -35,6 +35,11 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
         <!-- Требуется только в Spring Boot 4.x+ для включения H2-консоли.
              Для версий 3.x и ниже не нужна – достаточно spring.h2.console.enabled=true.
              В любом случае необходим spring-boot-starter-data-jpa или jdbc для создания DataSource. -->

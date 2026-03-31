@@ -1,7 +1,9 @@
 package com.javarush.controller;
 
+import com.javarush.dto.CreateUserDto;
 import com.javarush.entity.User;
 import com.javarush.repository.UserRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,10 +46,9 @@ public class HelloController {
     }
 
     @PostMapping("/users")
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        if (user.getId() != null) {
-            return ResponseEntity.badRequest().build();
-        }
+    public ResponseEntity<User> createUser(@Valid @RequestBody CreateUserDto createUserDto) {
+        // Преобразовать DTO в сущность
+        User user = new User(createUserDto.getName(), createUserDto.getEmail());
         User savedUser = userRepository.save(user);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
