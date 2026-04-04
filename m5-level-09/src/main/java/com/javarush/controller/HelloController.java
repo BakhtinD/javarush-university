@@ -1,23 +1,24 @@
 package com.javarush.controller;
 
+import com.javarush.dto.UserDto;
 import com.javarush.entity.User;
 import com.javarush.repository.UserRepository;
+import com.javarush.service.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 public class HelloController {
 
+    private final UserService userService;
     private final UserRepository userRepository;
-
-    @Autowired
-    public HelloController(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @GetMapping("/")
     public String sayHello() {
@@ -26,16 +27,24 @@ public class HelloController {
 
     @GetMapping("/users")
     public List<User> getUsers() {
-
-        return userRepository.findAll();
-
+        return userService.getAllUsers();
     }
+
+//    @GetMapping("/users/{id}")
+//    public User getUserById(@PathVariable Long id) {
+//        return userService.getUserById(id)
+//                .orElseThrow(() -> new RuntimeException("User not found: " + id));
+//    }
 
     @GetMapping("/users/{id}")
-    public User getUserById(@PathVariable Long id) {
-        return userRepository.findById(id).orElseThrow(
-                () -> new RuntimeException("User not found: " + id));
+    public UserDto getUserById(@PathVariable Long id) {
+        return userService.findUserDtoById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + id));
     }
+
+
+
+    // todo остальные методы перевести на userService
 
     @GetMapping("/users/email")
     public User getUserByEmail(@RequestParam String email) {
