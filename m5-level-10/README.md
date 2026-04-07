@@ -30,5 +30,30 @@ curl -s http://localhost:8080/users | jq .
 curl -X POST "http://localhost:8080/register?name=John&email=john@example.com"
 ```
 
+Создание пользователя через POST
+```bash
+curl -i -X POST "http://localhost:8080/users" \
+-H "Content-Type: application/json" \
+-d '{"name": "Dmitry", "email": "dmitry@example.com"}' 
+```
+
+Получить пользователя с ID = 1
+```bash
+curl -s "http://localhost:8080/users/1" | jq .
+```
+
+Обновить пользователя с ID = 1
+```bash
+curl -X PUT "http://localhost:8080/users/1" \
+-H "Content-Type: application/json" \
+-d '{"name": "Alice Updated", "email": "alice.updated@example.com"}' | jq .
+```
+
+Удалить пользователя с ID = 1
+```bash
+curl -i -X DELETE "http://localhost:8080/users/1" 
+```
+
+
 ### References 
 1. Ветка с заготовкой spring-data-jpa & CRUD https://github.com/sproshchaev/javarush-university/blob/m5-level-06-spring-data-jpa/m5-level-06/README.md  
