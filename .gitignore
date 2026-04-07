@@ -42,5 +42,8 @@ build/
 ### Txt ###
 *.txt
 
+### Other ###
+.claude
+
 ### Env ###
 .env
