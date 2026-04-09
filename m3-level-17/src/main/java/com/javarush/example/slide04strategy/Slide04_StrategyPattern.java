@@ -48,6 +48,7 @@ class BubbleSortStrategy implements SortStrategy {
 
 // Конкретная стратегия - Быстрая сортировка
 class QuickSortStrategy implements SortStrategy {
+
     @Override
     public void sort(int[] data) {
         quickSort(data, 0, data.length - 1);
@@ -86,6 +87,7 @@ class QuickSortStrategy implements SortStrategy {
 
 // Конкретная стратегия - Стандартная сортировка Java
 class JavaSortStrategy implements SortStrategy {
+
     @Override
     public void sort(int[] data) {
         Arrays.sort(data);
@@ -100,7 +102,9 @@ class JavaSortStrategy implements SortStrategy {
 // Демонстрация работы паттерна Strategy
 public class Slide04_StrategyPattern {
     public static void main(String[] args) {
+
         Sorter sorter = new Sorter();
+
         int[] data = {64, 34, 25, 12, 22, 11, 90};
 
         // Используем разные стратегии сортировки для одних и тех же данных

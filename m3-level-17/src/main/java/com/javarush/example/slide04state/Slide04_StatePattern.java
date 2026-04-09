@@ -9,6 +9,10 @@ class Document {
         this.state = new DraftState();
     }
 
+    public void getStatus() {
+        state.getStatus();
+    }
+
     public void setState(State state) {
         this.state = state;
     }
@@ -17,9 +21,6 @@ class Document {
         state.publish(this);
     }
 
-    public void getStatus() {
-        state.getStatus();
-    }
 }
 
 // Интерфейс состояния

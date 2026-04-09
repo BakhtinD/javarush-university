@@ -51,6 +51,7 @@ class SocialMediaGroup implements Subject {
 
 // 4. Конкретный подписчик (Пользователь)
 class User implements Observer {
+
     private String userName;
 
     public User(String userName) {
@@ -66,6 +67,7 @@ class User implements Observer {
 // 5. Демонстрация работы
 public class Slide01_ObserverExample {
     public static void main(String[] args) {
+
         // Создаем группу
         SocialMediaGroup javaGroup = new SocialMediaGroup("Java Programmers");
 

@@ -51,8 +51,11 @@ class StringArrayIterator implements Iterator<String> {
 // 5. Демонстрация работы
 public class Slide01_IteratorExample {
     public static void main(String[] args) {
+
         String[] languages = {"Java", "Python", "C++", "JavaScript"};
+
         Aggregate<String> aggregate = new StringArray(languages);
+
         Iterator<String> iterator = aggregate.createIterator();
 
         System.out.println("Обход массива через итератор:");

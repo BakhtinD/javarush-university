@@ -37,6 +37,7 @@ abstract class DataProcessor {
 
 // Конкретная реализация для обработки CSV данных
 class CsvDataProcessor extends DataProcessor {
+
     @Override
     protected void transformData() {
         System.out.println("Преобразование CSV: разбор строк, обработка заголовков...");
@@ -51,6 +52,7 @@ class CsvDataProcessor extends DataProcessor {
 
 // Конкретная реализация для обработки JSON данных
 class JsonDataProcessor extends DataProcessor {
+
     @Override
     protected void transformData() {
         System.out.println("Преобразование JSON: парсинг объектов, валидация структуры...");
@@ -65,6 +67,7 @@ class JsonDataProcessor extends DataProcessor {
 
 // Конкретная реализация для обработки XML данных
 class XmlDataProcessor extends DataProcessor {
+
     @Override
     protected void transformData() {
         System.out.println("Преобразование XML: парсинг DOM, обработка тегов...");
@@ -84,6 +87,7 @@ class XmlDataProcessor extends DataProcessor {
 
 // Демонстрация работы паттерна Шаблонный метод
 public class Slide05_TemplateMethodPattern {
+
     public static void main(String[] args) {
         System.out.println("=== Обработка CSV данных ===");
         DataProcessor csvProcessor = new CsvDataProcessor();
