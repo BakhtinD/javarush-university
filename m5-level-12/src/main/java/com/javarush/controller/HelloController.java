@@ -1,5 +1,7 @@
 package com.javarush.controller;
 
+import com.javarush.client.UserClient;
+import com.javarush.dto.UserDto;
 import com.javarush.entity.User;
 import com.javarush.exception.BusinessException;
 import com.javarush.repository.UserRepository;
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor // вместо конструктора с внедрением зависимостей
@@ -20,6 +23,7 @@ public class HelloController {
     private final UserRepository userRepository;
     private final UserService userService;
     private final RegistrationService registrationService;
+    private final UserClient userClient;
 
     @GetMapping("/")
     public String sayHello() {
@@ -54,6 +58,13 @@ public class HelloController {
         return userService.getAllUsers();
     }
 
+    @GetMapping("/users/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        return userService.getUserById(id)
+                .map(user -> ResponseEntity.ok(user))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestParam String name, @RequestParam String email) {
         try {
@@ -63,6 +74,13 @@ public class HelloController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Registration failed: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/client/users/{id}")
+    public ResponseEntity<?> getUserViaClient(@PathVariable Long id) {
+        Optional<UserDto> user = userClient.getUserById(id);
+        return user.<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
 }
