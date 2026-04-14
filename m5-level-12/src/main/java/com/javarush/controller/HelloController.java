@@ -1,6 +1,7 @@
 package com.javarush.controller;
 
 import com.javarush.client.UserClient;
+import com.javarush.client.UserFeignClient;
 import com.javarush.dto.UserDto;
 import com.javarush.entity.User;
 import com.javarush.exception.BusinessException;
@@ -24,6 +25,7 @@ public class HelloController {
     private final UserService userService;
     private final RegistrationService registrationService;
     private final UserClient userClient;
+    private final UserFeignClient userFeignClient;
 
     @GetMapping("/")
     public String sayHello() {
@@ -81,6 +83,12 @@ public class HelloController {
         Optional<UserDto> user = userClient.getUserById(id);
         return user.<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/feign/users/{id}")
+    public ResponseEntity<UserDto> getUserViaFeign(@PathVariable Long id) {
+        UserDto user = userFeignClient.getUserById(id);
+        return ResponseEntity.ok(user);
     }
 
 }

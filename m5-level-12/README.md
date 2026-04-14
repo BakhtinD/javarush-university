@@ -35,5 +35,15 @@ curl -X POST "http://localhost:8080/register?name=John&email=john@example.com"
 curl http://localhost:8080/client/users/1
 ```
 
-### References 
+Получение пользователя по id через RestTemplate
+```bash
+curl -s http://localhost:8080/users/1 | jq .
+```
+
+Тестирование @FeignClient
+```bash
+curl -s http://localhost:8080/feign/users/1 | jq .
+```
+
+### References
 1. Ветка с заготовкой spring-data-jpa & CRUD https://github.com/sproshchaev/javarush-university/blob/m5-level-06-spring-data-jpa/m5-level-06/README.md  

@@ -69,6 +69,18 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- OpenFeign – декларативный HTTP-клиент (без Spring Cloud, совместим с Spring Boot 4.x) -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-core</artifactId>
+            <version>13.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-jackson</artifactId>
+            <version>13.5</version>
+        </dependency>
+
         <!-- Lombok – автоматически генерирует конструкторы, геттеры, сеттеры и др. через аннотации.
              optional=true означает, что зависимость не транзитивно не передаётся и не нужна в рантайме. -->
         <dependency>
