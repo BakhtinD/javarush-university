@@ -38,3 +38,9 @@ src/main/webapp                  - JSP-страницы
 
 src/test/java/com/javarush/quest - тесты
 ```
+
+5. Эндпоинты
+```text
+http://localhost:8080/HelloQuest/hello
+http://localhost:8080/HelloQuest/game
+```
