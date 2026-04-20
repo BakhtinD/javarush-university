@@ -28,3 +28,13 @@
 3) Показать результат 
 4) Соответствовать поддерживаемой архитектуре
 ```
+
+4. Структура каталогов
+```text
+src/main/java/com/javarush/quest - Java классы
+src/main/resources               - ресурсы
+src/main/webapp/WEB-INF          - веб-конфигурация
+src/main/webapp                  - JSP-страницы
+
+src/test/java/com/javarush/quest - тесты
+```
