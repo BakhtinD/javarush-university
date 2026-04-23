@@ -43,6 +43,7 @@ src/test/java/com/javarush/quest - тесты
 ```text
 http://localhost:8080/HelloQuest/hello
 http://localhost:8080/HelloQuest/game
+http://localhost:8080/HelloQuest/start
 ```
 
 ### Модернизация проекта (часть 2)
@@ -113,7 +114,11 @@ http://localhost:8080/HelloQuest/game
   - Валидация финальных шагов
 ```
 
+#### Рабочие заметки 
+```text
+Вебинар 2 остановились на GameServlet
 
+```
 
 
 
