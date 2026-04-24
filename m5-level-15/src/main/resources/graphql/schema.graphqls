@@ -1,0 +1,44 @@
+# GraphQL Schema Definition Language (SDL)
+# Схема — это контракт между клиентом и сервером.
+# Файл размещается в src/main/resources/graphql/ — Spring for GraphQL найдет его автоматически.
+
+# ============================================================
+# Типы данных
+# ============================================================
+
+# Тип "Книга". Символ ! означает обязательное поле (non-nullable).
+type Book {
+    id: ID!
+    title: String!
+    # Вложенное поле — GraphQL сам разрешает его через Data Fetcher
+    author: Author
+}
+
+# Тип "Автор". Поле books — список книг (может быть пустым, но не null).
+type Author {
+    id: ID!
+    name: String!
+    bio: String
+    # Список книг автора — демонстрирует nested-запросы и проблему N+1
+    books: [Book!]!
+}
+
+# ============================================================
+# Корневые типы операций
+# ============================================================
+
+# Query — операции для ЧТЕНИЯ данных (аналог GET в REST)
+type Query {
+    allBooks: [Book!]!
+    bookById(id: ID!): Book
+
+    allAuthors: [Author!]!
+    authorById(id: ID!): Author
+}
+
+# Mutation — операции для ИЗМЕНЕНИЯ данных (аналог POST/PUT/DELETE в REST)
+type Mutation {
+    addAuthor(name: String!, bio: String): Author
+    addBook(title: String!, authorId: ID!): Book
+    deleteBook(id: ID!): Boolean
+}

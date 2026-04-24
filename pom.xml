@@ -88,6 +88,7 @@
         <module>m5-level-09</module>
         <module>m5-level-10</module>
         <module>m5-level-12</module>
+        <module>m5-level-15</module>
     </modules>
 
     <properties>

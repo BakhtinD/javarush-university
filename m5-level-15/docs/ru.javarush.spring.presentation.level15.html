@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ru" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://super-dev-styles.github.io/website-assets/slides.css" rel="stylesheet">
+    <script src="https://super-dev-styles.github.io/website-assets/slides.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <link href="https://super-dev-styles.github.io/website-assets/styles.css" rel="stylesheet">
+    <link href="https://super-dev-styles.github.io/website-assets/view.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: false });</script>
+    <title>Уровень 15: Введение в GraphQL</title>
+</head>
+<body>
+<div class="content lecture-content post-content">
+    <db-content>
+        <h1>Уровень 15: Введение в GraphQL</h1>
+        <p>До сих пор мы рассматривали REST как основной способ построения API. На этом уровне мы изучим его мощную и гибкую альтернативу — <b>GraphQL</b>. Вы узнаете, почему технологии, разработанные в Facebook, завоевали мир, и как они решают классические проблемы REST, такие как <b>избыточная (over-fetching)</b> и <b>недостаточная (under-fetching)</b> выборка данных.</p>
+        <p>Сегодня разберем три кита GraphQL: <b>Queries, Mutations и Subscriptions</b>. Вы научитесь определять <b>схему</b> API, которая служит строгим контрактом между клиентом и сервером, и связывать ее с вашим Java-кодом с помощью <b>Spring for GraphQL</b>. Мы также затронем роль GraphQL в микросервисной архитектуре и обсудим, как решать проблему производительности N+1 с помощью паттерна <b>DataLoader</b>.
+            <img data-max-width="1080" data-id="2ffae650-68cb-4dee-a7d1-f1a65f4e6b80" src="https://cdn.javarush.com/images/article/2ffae650-68cb-4dee-a7d1-f1a65f4e6b80/1080.jpeg" alt=""></p>
+        <hr>
+        <h2>Проблемы REST API</h2>
+        <p>Несмотря на свою популярность, REST имеет ограничения, которые особенно заметны в сложных системах с разнообразными клиентами (веб, мобильные, десктоп).</p>
+        <ul>
+            <li><b>Over-fetching (избыточная выборка)</b> получаете больше данных, чем вам нужно.
+                <ul>
+                    <li><b>Пример:</b> Вам нужно только имя пользователя, но эндпоинт <code>GET /users/{id}</code> возвращает объект <code>User</code> с 20 полями. Это лишний трафик и ненужная работа для сервера.</li>
+                </ul>
+            </li>
+            <li><b>Under-fetching (недостаточная выборка)</b> получаете недостаточно данных и вынуждены делать дополнительные запросы.
+                <ul>
+                    <li>Чтобы показать страницу профиля, вам нужно сделать один запрос на <code>GET /users/{id}</code>, второй на <code>GET /users/{id}/posts</code> и третий на <code>GET /users/{id}/followers</code>. Это замедляет загрузку.</li>
+                </ul>
+            </li>
+        </ul>
+        <p>Клиент жестко привязан к структуре данных, которую диктует сервер.</p>
+        <p>На схеме "лишние" данные при over-fetching и "лишние" запросы при under-fetching.</p>
+        <div class="mermaid">
+            graph LR
+            subgraph "Over-fetching"
+            direction LR
+            Client1["Клиент (нужны только имена)"] -- "GET /users" --> Server1["Сервер"]
+            Server1 -- "Возвращает ВСЕ поля<br/>(id, name, email, address...)" --> Response1["{ user: { id:1, <b>name:'A'</b>, email... } }<br/>{ user: { id:2, <b>name:'B'</b>, email... } }"]
+            style Response1 fill:#ffcdd2
+            end
+
+            subgraph "Under-fetching"
+            direction TB
+            Client2["Клиент (нужна страница профиля)"]
+            Server2["Сервер"]
+            NoteNode["<b>Проблема:</b><br/>3 отдельных сетевых запроса<br/>для отображения одной страницы!"]
+
+            Client2 -- "1. GET /users/1" --> Server2
+            Client2 -- "2. GET /users/1/posts" --> Server2
+            Client2 -- "3. GET /users/1/followers" --> Server2
+
+            Client2 -.-> NoteNode
+
+            style Client2 fill:#ffcdd2
+            style NoteNode fill:#fff9c4,stroke:#f57c00,stroke-dasharray: 5 5
+            end
+        </div>
+        <hr>
+        <h2>Что такое GraphQL?</h2>
+        <p><b>GraphQL</b> — это <b>язык запросов для API</b> и <b>среда выполнения на стороне сервера</b> для обработки этих запросов.</p>
+        <p>Это не фреймворк и не база данных, а спецификация, разработанная Facebook.</p>
+        <p>Вместо того чтобы сервер определял, какие данные возвращать, <b>клиент</b> в своем запросе точно описывает, какие данные ему нужны, включая вложенные связи. Сервер гарантирует, что вернет данные именно в той структуре, в которой их запросил клиент, и ничего лишнего.</p>
+        <p>GraphQL переворачивает отношения: теперь не сервер, а клиент диктует "контракт" данных.</p>
+
+        <h3>REST vs. GraphQL</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Критерий</th>
+                <th>REST API</th>
+                <th>GraphQL API</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><b>Эндпоинты</b></td>
+                <td>Множество эндпоинтов (<code>/users</code>, <code>/posts</code>)</td>
+                <td>Один эндпоинт (обычно <code>/graphql</code>)</td>
+            </tr>
+            <tr>
+                <td><b>Структура данных</b></td>
+                <td>Определяется сервером</td>
+                <td>Определяется клиентом в запросе</td>
+            </tr>
+            <tr>
+                <td><b>Проблема Over/Under-fetching</b></td>
+                <td>Присутствует по своей природе</td>
+                <td>Решена по своей природе</td>
+            </tr>
+            <tr>
+                <td><b>Протокол</b></td>
+                <td>Использует HTTP-методы (GET, POST...)</td>
+                <td>Обычно использует POST для всех операций</td>
+            </tr>
+            <tr>
+                <td><b>Типизация</b></td>
+                <td>Не является частью стандарта (нужен OpenAPI)</td>
+                <td>Встроена в ядро (сильная типизация схемы)</td>
+            </tr>
+            </tbody>
+        </table>
+        <h4>Сравнение запросов</h4>
+        <div class="mermaid">
+            graph TB
+            subgraph "REST API"
+            direction TB
+
+            Client1[👤 Клиент]
+
+            Client1 -->|1. GET /users/1| R1[📄 User Service]
+            Client1 -->|2. GET /users/1/posts| R2[📝 Posts Service]
+            Client1 -->|3. GET /users/1/comments| R3[💬 Comments Service]
+
+            R1 -->|"Весь объект User<br/>id, name, email, phone<br/>address, created_at"| D1[📦 User Data]
+            R2 -->|"Все посты<br/>id, title, content<br/>created_at, updated_at"| D2[📦 Posts Data]
+            R3 -->|"Все комментарии<br/>id, text, author<br/>post_id, created_at"| D3[📦 Comments Data]
+
+            style Client1 fill:#e3f2fd
+            style R1 fill:#ffcdd2
+            style R2 fill:#ffcdd2
+            style R3 fill:#ffcdd2
+            style D1 fill:#ffebee
+            style D2 fill:#ffebee
+            style D3 fill:#ffebee
+            end
+
+            subgraph "GraphQL API"
+            direction TB
+
+            Client2[👤 Клиент]
+
+            Client2 -->|"POST /graphql<br/>query user(id: 1)<br/>name, posts title"| G1[🎯 GraphQL Server]
+
+            G1 -->|"Только запрошенные поля<br/>user: name John<br/>posts: title Post1, Post2"| D4[📦 Structured Response]
+
+            style Client2 fill:#e3f2fd
+            style G1 fill:#c8e6c9
+            style D4 fill:#e8f5e8
+            end
+
+
+
+        </div>
+        <hr>
+        <h2>Основные концепции</h2>
+        <p>GraphQL API строится на трех основных типах операций:</p>
+        <ol>
+            <li><b>Query</b> — операция для <b>чтения</b> данных. Аналог <code>GET</code> в REST.</li>
+            <li><b>Mutation</b> — операция для <b>изменения</b> данных (создание, обновление, удаление). Аналог <code>POST</code>, <code>PUT</code>, <code>DELETE</code>.</li>
+            <li><b>Subscription</b> — операция для поддержания <b>долговременного соединения</b> с сервером. Позволяет клиенту получать обновления данных в реальном времени, когда они происходят на сервере (обычно через WebSockets).</li>
+        </ol>
+        <hr>
+        <h2>Схема и типы</h2>
+        <p><b>Схема</b> — это сердце любого GraphQL API. Она служит строгим контрактом, который описывает все возможности API. Схема пишется на специальном языке — <b>Schema Definition Language (SDL)</b>.</p>
+        <p>Схема определяет:</p>
+        <ul>
+            <li>Какие <b>типы</b> данных существуют (<code>User</code>, <code>Post</code>).</li>
+            <li>Какие <b>запросы (queries)</b> можно выполнять.</li>
+            <li>Какие <b>мутации</b> доступны.</li>
+        </ul>
+        <pre class="language-graphql"><code># Схема определяет тип "Книга" с полями
+type Book {
+    id: ID!
+    title: String!
+    author: Author
+}
+
+# Схема определяет тип "Автор"
+type Author {
+    id: ID!
+    name: String!
+    books: [Book]
+}
+
+# Корневой тип для всех запросов на чтение
+type Query {
+    bookById(id: ID!): Book
+    allAuthors: [Author]
+}
+</code></pre>
+        <p><code>!</code> означает, что поле является обязательным (non-nullable).</p>
+        <hr>
+        <h2>Запросы</h2>
+        <p>Клиент формирует запрос, структура которого "зеркалит" структуру типов в схеме.</p>
+        <p><b>Пример запроса:</b> "Дай мне книгу с id=1, мне нужно ее название и имя ее автора".</p>
+        <pre class="language-graphql"><code>query GetBookAndAuthorName {
+  bookById(id: "1") {
+    title
+    author {
+      name
+    }
+  }
+}
+</code></pre>
+        <p><b>Ответ от сервера (JSON):</b></p>
+        <pre class="language-json"><code>{
+  "data": {
+    "bookById": {
+      "title": "The Great Gatsby",
+      "author": {
+        "name": "F. Scott Fitzgerald"
+      }
+    }
+  }
+}
+</code></pre>
+        <p>Ответ в точности повторяет структуру запроса. Никаких лишних полей.</p>
+        <hr>
+        <h2>Мутации</h2>
+        <p>Мутации используются для изменения данных. Синтаксис похож на запросы, но они должны начинаться с ключевого слова <code>mutation</code>.</p>
+        <p><b>Определение мутации в схеме:</b></p>
+        <pre class="language-graphql"><code>type Mutation {
+    addBook(title: String!, authorId: ID!): Book
+}</code></pre>
+        <p><b>Выполнение мутации клиентом:</b></p>
+        <pre class="language-graphql"><code>mutation CreateBook {
+  addBook(title: "New Book", authorId: "2") {
+    id
+    title
+  }
+}
+</code></pre>
+        <p>Как и в случае с запросами, после выполнения мутации можно запросить определенные поля созданного или измененного объекта.</p>
+        <hr>
+        <h2>Spring for GraphQL</h2>
+        <p><b>Spring for GraphQL</b> — это официальный проект от команды Spring, который упрощает создание GraphQL-серверов.</p>
+        <p>Ключевая зависимость, которую нужно добавить в <code>pom.xml</code>:</p>
+        <pre class="language-xml"><code>&lt;dependency&gt;
+&lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+&lt;artifactId&gt;spring-boot-starter-graphql&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+        <p>Этот стартер автоматически:</p>
+        <ul>
+            <li>Подключает библиотеку <b>GraphQL Java</b> — ядро любого GraphQL-сервера на Java.</li>
+            <li>Настраивает эндпоинт <code>/graphql</code>.</li>
+            <li>Настраивает поддержку WebSockets для подписок.</li>
+            <li>Ищет файлы со схемой в вашем проекте.</li>
+        </ul>
+        <hr>
+        <h2>Создание схемы</h2>
+        <p>По соглашению, Spring for GraphQL ищет файлы с описанием схемы в директории:
+            <code>src/main/resources/graphql/</code></p>
+        <p>Вы можете создать один большой файл <code>schema.graphqls</code> или разбить схему на несколько файлов (<code>book.graphqls</code>, <code>author.graphqls</code>). Spring автоматически найдет и объединит их все в одну общую схему.</p>
+        <p><b><code>src/main/resources/graphql/book.graphqls</code>:</b></p>
+        <pre class="language-graphql"><code>type Query {
+    bookById(id: ID!): Book
+}
+
+type Book {
+    id: ID!
+    title: String!
+}
+</code></pre>
+        <hr>
+        <h2>Контроллер и маппинг</h2>
+        <p>Spring for GraphQL использует аннотации, очень похожие на Spring MVC, для связывания полей схемы с методами вашего Java-кода.</p>
+        <p>Контроллер помечается стандартной аннотацией <code>@Controller</code>.</p>
+        <pre class="language-java"><code>@Controller
+public class BookController {
+
+    private final BookService bookService;
+    // ... конструктор ...
+
+    // Этот метод будет обрабатывать поле "bookById" из типа "Query"
+    @QueryMapping
+    public Book bookById(@Argument Long id) {
+        // @Argument связывает аргумент из GraphQL-запроса с параметром метода
+        return bookService.findById(id);
+    }
+
+    // Этот метод будет обрабатывать мутацию "addBook"
+    @MutationMapping
+    public Book addBook(@Argument String title, @Argument Long authorId) {
+        return bookService.create(title, authorId);
+    }
+}
+</code></pre>
+        <p>Связывание схемы GraphQL с Java-контроллером</p>
+        <div class="mermaid">
+            graph TD
+            subgraph "schema.graphqls"
+            Query["<b>type Query {</b><br/>  bookById(id: ID!): Book<br/><b>}</b>"]
+            Mutation["<b>type Mutation {</b><br/>  addBook(...): Book<br/><b>}</b>"]
+            end
+
+            subgraph "BookController.java)"
+            MethodQuery["@QueryMapping<br/>public Book <b>bookById</b>(...)"]
+            MethodMutation["@MutationMapping<br/>public Book <b>addBook</b>(...)"]
+            end
+
+            Query -- "реализуется методом" --> MethodQuery
+            Mutation -- "реализуется методом" --> MethodMutation
+
+            style Query fill:#e3f2fd
+            style Mutation fill:#e3f2fd
+            style MethodQuery fill:#e8f5e8
+            style MethodMutation fill:#e8f5e8
+        </div>
+        <hr>
+        <h2>Data Fetchers</h2>
+        <p>По сути, каждый метод, помеченный <code>@QueryMapping</code>, <code>@MutationMapping</code> или <code>@SchemaMapping</code> (для полей вложенных объектов), является <b>"получателем данных" (Data Fetcher)</b>.</p>
+        <p><b>Data Fetcher</b> — это кусочек кода, который отвечает за возврат данных для <b>одного конкретного поля</b> в вашей схеме.</p>
+        <p>Когда GraphQL Java получает запрос, он парсит его и для каждого запрашиваемого поля вызывает соответствующий Data Fetcher. Spring for GraphQL просто предоставляет удобный способ объявлять эти фетчеры с помощью аннотаций.</p>
+        <hr>
+        <h2>GraphQL в микросервисах</h2>
+        <p>GraphQL редко используется для внутрисервисного общения. Его основная сила проявляется на "границе" системы, как точка входа для клиентов.</p>
+        <p>Частый паттерн — <b>GraphQL Gateway</b> или <b>Backend for Frontend (BFF)</b>.</p>
+        <ul>
+            <li>Создается отдельный GraphQL-сервис, который является единой точкой входа для всех фронтенд-приложений.</li>
+            <li>Этот сервис сам не имеет своей базы данных и бизнес-логики.</li>
+            <li>Его Data Fetcher'ы ходят по сети в другие, "внутренние" микросервисы (по REST или gRPC), собирают от них данные и объединяют их в один GraphQL-ответ.</li>
+        </ul>
+        <p>Это позволяет фронтенду получать все необходимые данные одним запросом, при этом сохраняя независимость и декомпозицию на бэкенде.</p>
+        <div class="mermaid">
+            graph TD
+            subgraph "Клиентский уровень"
+            Client[📱 Фронтенд-приложение]
+            end
+
+            subgraph "Уровень шлюза"
+            GraphQL_GW(🚀 GraphQL Gateway)
+            end
+
+            subgraph "Внутренние микросервисы (REST)"
+            S1[👤 User Service]
+            S2[📦 Product Service]
+            S3[🛒 Order Service]
+            end
+
+            Client -- "Один GraphQL-запрос" --> GraphQL_GW
+            GraphQL_GW -- "REST-запрос 1" --> S1
+            GraphQL_GW -- "REST-запрос 2" --> S2
+            GraphQL_GW -- "REST-запрос 3" --> S3
+        </div>
+        <p>Схема наглядно показывает роль GraphQL как "фасада", который скрывает сложность внутренней микросервисной архитектуры от клиента.</p>
+        <hr>
+        <h2>Проблема N+1 в GraphQL</h2>
+        <p>Гибкость GraphQL может легко привести к серьезным проблемам с производительностью.</p>
+        <p><b>Схема:</b>
+            <code>type Author { books: [Book] }</code></p>
+        <p><b>Запрос:</b></p>
+        <pre class="language-graphql"><code>{
+  allAuthors {
+    name
+    books {
+      title
+    }
+  }
+}
+</code></pre>
+        <p><b>Наивная реализация на сервере:</b></p>
+        <ol>
+            <li>Выполнить <b>1</b> SQL-запрос, чтобы получить всех авторов.</li>
+            <li>Затем для <b>каждого</b> из N авторов выполнить еще по <b>одному</b> SQL-запросу, чтобы получить его книги.</li>
+        </ol>
+        <p>Итог: <b>1 + N</b> запросов к базе данных, что катастрофически неэффективно.</p>
+        <div class="mermaid">
+            sequenceDiagram
+            participant Client as 👤 Клиент
+            participant GraphQL as 🚀 GraphQL Server
+            participant DB as 🗄️ База данных
+
+            Client->>GraphQL: { allAuthors { name, books { title } } }
+            activate GraphQL
+
+            GraphQL->>DB: 1. SELECT * FROM authors;
+            activate DB
+            DB-->>GraphQL: [Author1, Author2, ...]
+            deactivate DB
+
+            Note over GraphQL,DB: Теперь для КАЖДОГО автора делается отдельный запрос...
+
+            GraphQL->>DB: 2. SELECT * FROM books WHERE author_id = 1;
+            activate DB
+            DB-->>GraphQL: [BookA, BookB]
+            deactivate DB
+
+            GraphQL->>DB: 3. SELECT * FROM books WHERE author_id = 2;
+            activate DB
+            DB-->>GraphQL: [BookC]
+            deactivate DB
+
+            GraphQL->>DB: ... и так далее N раз
+
+            GraphQL-->>Client: Полный ответ
+            deactivate GraphQL
+        </div>
+        <hr>
+        <h2>Решение с помощью DataLoaders</h2>
+        <p><b>DataLoader</b> — это стандартный паттерн в мире GraphQL для решения проблемы N+1. Это не магия, а простая утилита для <b>пакетирования (batching)</b> и <b>кэширования</b> запросов в рамках <b>одного GraphQL-запроса</b>.</p>
+        <p>Как это работает:</p>
+        <ol>
+            <li>Когда резолверы запрашивают книги для авторов с ID 1, 5 и 10, эти запросы не выполняются немедленно. Они накапливаются в DataLoader.</li>
+            <li>В определенный момент DataLoader "выстреливает", собирает все уникальные ID (1, 5, 10) и выполняет <b>один</b> SQL-запрос: <code>SELECT * FROM books WHERE author_id IN (1, 5, 10)</code>.</li>
+            <li>Получив результат, он распределяет его по соответствующим запросам.</li>
+        </ol>
+        <p>Spring for GraphQL имеет встроенную поддержку этого механизма.</p>
+        <hr>
+        <h2>Обработка ошибок</h2>
+        <p>В REST мы привыкли использовать HTTP-статусы (404, 400, 500) для сообщения об ошибках.</p>
+        <p>GraphQL подходит к этому иначе. Даже если при обработке поля произошла ошибка, сервер чаще всего вернет <b>HTTP статус <code>200 OK</code></b>.</p>
+        <p>Тело ответа будет содержать два поля: <code>data</code> (которое может быть <code>null</code> или содержать частично успешные результаты) и <code>errors</code>.</p>
+        <p><b>Пример ответа с ошибкой:</b></p>
+        <pre class="language-json"><code>{
+  "data": {
+    "bookById": null
+  },
+  "errors": [
+    {
+      "message": "Book with ID 999 not found",
+      "locations": [ { "line": 2, "column": 3 } ],
+      "path": [ "bookById" ],
+      "extensions": {
+        "classification": "DataFetchingException"
+      }
+    }
+  ]
+}
+</code></pre>
+        <p>Это позволяет клиенту получить как успешно извлеченные данные, так и информацию об ошибках в рамках одного ответа.</p>
+        <hr>
+    </db-content>
+</div>
+</body>
+</html>
