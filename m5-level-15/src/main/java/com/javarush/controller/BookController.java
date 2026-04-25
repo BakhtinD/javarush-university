@@ -3,8 +3,13 @@ package com.javarush.controller;
 import com.javarush.entity.Author;
 import com.javarush.entity.Book;
 import com.javarush.service.BookService;
+import graphql.ErrorType;
+import graphql.GraphQLError;
+import graphql.GraphqlErrorBuilder;
+import graphql.schema.DataFetchingEnvironment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
@@ -50,5 +55,17 @@ public class BookController {
     @SchemaMapping(typeName = "Author", field = "books")
     public List<Book> booksForAuthor(Author author) {
         return bookService.findByAuthorId(author.getId());
+    }
+
+    // @GraphQlExceptionHandler — обработчик исключений на уровне контроллера.
+    // Аналог @ExceptionHandler в Spring MVC.
+    // Перехватывает IllegalArgumentException из ЛЮБОГО метода этого контроллера.
+    // Без него Spring for GraphQL вернул бы "INTERNAL_ERROR for <UUID>" (маскировка).
+    @GraphQlExceptionHandler
+    public GraphQLError handleIllegalArgument(IllegalArgumentException ex, DataFetchingEnvironment env) {
+        return GraphqlErrorBuilder.newError(env)
+                .message(ex.getMessage())
+                .errorType(ErrorType.ValidationError)
+                .build();
     }
 }

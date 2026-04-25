@@ -18,6 +18,12 @@
 m5-level-15/
 ├── src/main/java/com/javarush/
 │   ├── Main.java
+├── src/test/java/com/javarush/
+│   ├── service/
+│   │   └── BookServiceTest.java        # Юнит-тест сервиса (Mockito, без Spring)
+│   └── controller/
+│       ├── GraphQlQueryTest.java       # Интеграционные тесты Query-операций
+│       └── GraphQlMutationTest.java    # Интеграционные тесты Mutation-операций
 │   ├── controller/
 │   │   ├── AuthorController.java   # @QueryMapping, @MutationMapping для Author
 │   │   └── BookController.java     # @QueryMapping, @MutationMapping, @SchemaMapping
@@ -213,6 +219,48 @@ GraphQL-движок вызывает его **для каждого** объе�
 
 Итого: **1 + N запросов** к БД — проблема N+1.  
 Решение — **DataLoader** (batching): объединяет N запросов в один `SELECT * FROM BOOKS WHERE author_id IN (1, 2, ..., N)`.
+
+---
+
+## Тесты
+
+### Запуск тестов
+
+```bash
+cd m5-level-15
+mvn test
+```
+
+### Структура тестов
+
+| Класс | Тип | Что тестирует |
+|-------|-----|---------------|
+| `BookServiceTest` | Юнит (Mockito, без Spring) | Бизнес-логика `BookService`: CRUD, исключения |
+| `GraphQlQueryTest` | Интеграционный (`@SpringBootTest` + MockMvc) | Query: `allBooks`, `bookById`, `allAuthors`, `authorById` |
+| `GraphQlMutationTest` | Интеграционный (`@SpringBootTest` + MockMvc) | Mutation: `addAuthor`, `addBook`, `deleteBook`, ошибки |
+
+### Подходы к тестированию
+
+**Юнит-тест сервиса** (`@ExtendWith(MockitoExtension.class)`):
+- Контекст Spring не поднимается → тест работает быстро
+- Репозитории заменены моками (`@Mock`, `@InjectMocks`)
+- Проверяется только бизнес-логика в изоляции
+
+**Интеграционный тест** (`@SpringBootTest` + `MockMvcBuilders.webAppContextSetup()`):
+- Поднимается полный контекст Spring + H2 с данными из `data.sql`
+- MockMvc создаётся вручную через `WebApplicationContext` (без `@AutoConfigureMockMvc`)
+- Запросы идут через MockMvc в виде HTTP POST на `/graphql`
+- Ответ всегда `HTTP 200` — проверяется содержимое `$.data` и `$.errors`
+- `@DirtiesContext` — контекст пересоздаётся после каждого теста (мутации не влияют друг на друга)
+
+### Особенности ответов GraphQL в тестах
+
+```
+Успех:   { "data": { "allBooks": [...] } }
+Ошибка:  { "data": { "addBook": null }, "errors": [{ "message": "..." }] }
+```
+
+GraphQL **всегда возвращает HTTP 200** — поэтому `.andExpect(status().isOk())` верен и в случае ошибки.
 
 ---
 
