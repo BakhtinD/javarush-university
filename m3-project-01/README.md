@@ -78,7 +78,7 @@ http://localhost:8080/HelloQuest/start
 4. Создать модели данных:
 ```text
 1) Класс QuestStep - модель шага квеста:
-  - id шага
+  - id шага: "start", "bridge", "captain", "win", "lose1", "lose2", "lose3"
   - текст вопроса
   - два варианта ответа
   - id следующих шагов для каждого ответа
