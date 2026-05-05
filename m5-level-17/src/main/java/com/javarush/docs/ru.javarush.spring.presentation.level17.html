@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ru" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://super-dev-styles.github.io/website-assets/slides.css" rel="stylesheet">
+    <script src="https://super-dev-styles.github.io/website-assets/slides.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <link href="https://super-dev-styles.github.io/website-assets/styles.css" rel="stylesheet">
+    <link href="https://super-dev-styles.github.io/website-assets/view.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: false });</script>
+    <title>Уровень 17: Spring Security — основы безопасности</title>
+</head>
+<body>
+<div class="content lecture-content post-content">
+    <db-content>
+        <h1>Уровень 17: Spring Security — основы безопасности</h1>
+        <p>Мы научились создавать сложные приложения(но это не точно), но до сих пор они были незащищенными. На этом уровне мы закроем эту брешь, изучив <b>Spring Security</b> — мощнейший фреймворк для обеспечения безопасности в Java-приложениях. Вы поймете фундаментальную разницу между <b>аутентификацией</b> и <b>авторизацией</b>.</p>
+        <p>Разберем архитектуру Spring Security, основанную на <b>цепочке фильтров</b>, и научимся настраивать ее с помощью современного подхода. Вы узнаете, как загружать данные о пользователях из базы данных, и, что самое важное, как безопасно хранить их пароли с использованием <b>BCrypt</b>.</p>
+        <hr>
+        <h2>Почему безопасность важна?</h2>
+        <p>В любом реальном приложении есть данные или действия, которые доступны не всем. Искушение написать простую проверку <code>if (user.getRole().equals("ADMIN"))</code> велико, но это крайне опасно.</p>
+        <p>Веб-приложения подвержены десяткам угроз:</p>
+        <ul>
+            <li>Межсайтовый скриптинг (XSS)</li>
+            <li>Подделка межсайтовых запросов (CSRF)</li>
+            <li>SQL-инъекции</li>
+            <li>Утечка паролей пользователей</li>
+        </ul>
+        <p><b>Spring Security</b> — это не просто библиотека для проверки логина и пароля. Это комплексный фреймворк, который предоставляет защиту от большинства распространенных атак "из коробки". Игнорировать его — значит оставлять свое приложение беззащитным.</p>
+        <hr>
+        <h2>Аутентификация vs. Авторизация</h2>
+        <p>Это два столпа, на которых строится любая система безопасности. Крайне важно понимать разницу.</p>
+        <ul>
+            <li>
+                <p><b>Аутентификация (Authentication)</b> процесс проверки личности. Система отвечает на вопрос: <b>"Кто ты?"</b>.</p>
+                <ul>
+                    <li>Примеры: ввод логина и пароля, использование биометрии, предъявление паспорта.</li>
+                    <li>Результат: система либо подтверждает вашу личность, либо нет.</li>
+                </ul>
+            </li>
+            <li>
+                <p><b>Авторизация (Authorization)</b> процесс проверки прав доступа. После успешной аутентификации система отвечает на вопрос: <b>"Что тебе можно делать?"</b>.</p>
+                <ul>
+                    <li>Примеры: проверка, имеет ли пользователь право читать этот документ, удалять этот комментарий или заходить в админ-панель.</li>
+                    <li>Результат: доступ разрешен или запрещен.</li>
+                </ul>
+            </li>
+        </ul>
+        <p>Аутентификация — это ваш пропуск в здание. Авторизация — это проверка, дает ли этот пропуск вам право войти в конкретный кабинет.</p>
+        <hr>
+        <h2>Архитектура</h2>
+        <p>Spring Security построен на концепции <b>цепочки сервлетных фильтров (Servlet Filter Chain)</b>.</p>
+        <p>Вместо того чтобы запрос сразу попадал в ваш контроллер, он сначала проходит через ряд фильтров Spring Security. Каждый фильтр отвечает за свою небольшую часть безопасности.</p>
+        <ul>
+            <li>Один фильтр проверяет CSRF-токен.</li>
+            <li>Другой — "извлекает" пользователя из сессии.</li>
+            <li>Третий (<code>UsernamePasswordAuthenticationFilter</code>) — обрабатывает логин и пароль из формы.</li>
+            <li>Четвертый (<code>AuthorizationFilter</code>) — проверяет, есть ли у пользователя права на доступ к запрошенному URL.</li>
+        </ul>
+        <p>Только если запрос успешно прошел всю цепочку, он будет передан в <code>DispatcherServlet</code> и ваш контроллер.</p>
+        <h4>Прохождение запроса</h4>
+        <div class="mermaid">
+            sequenceDiagram
+            participant Client as 👤 Клиент
+            participant Filters as 🛡️ Security Filter Chain
+            participant Controller as 🎮 Контроллер
+
+            Client->>Filters: HTTP Request (GET /admin/dashboard)
+            activate Filters
+
+            Note over Filters: Проверка CSRF... OK
+            Note over Filters: Аутентификация... OK
+            Note over Filters: Авторизация... OK
+
+            Filters->>Controller: Передача запроса
+            activate Controller
+
+            Controller-->>Filters: HTTP Response
+            deactivate Controller
+
+            Filters-->>Client: HTTP Response
+            deactivate Filters
+        </div>
+        <hr>
+        <h2>Быстрый старт</h2>
+        <p>Магия Spring Boot в действии. Чтобы включить базовую защиту, достаточно добавить одну зависимость в <code>pom.xml</code>:</p>
+        <pre class="language-xml"><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-security&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+        <p><b>Что произойдет после этого?</b></p>
+        <ol>
+            <li><b>Все эндпоинты</b> вашего приложения станут защищенными по умолчанию.</li>
+            <li>Spring Boot <b>автоматически сгенерирует пароль</b> для пользователя <code>user</code> и выведет его в консоль при старте.</li>
+            <li>При попытке доступа к любому URL вы будете перенаправлены на <b>стандартную страницу входа</b>.</li>
+            <li>Будет включена <b>HTTP Basic</b> аутентификация для API-клиентов.</li>
+        </ol>
+        <p>Хорошо, но для реального приложения нам нужна своя конфигурация.</p>
+        <hr>
+        <h2>Современная конфигурация</h2>
+        <p>Раньше для настройки Spring Security наследовались от класса <code>WebSecurityConfigurerAdapter</code>. Этот подход <b>устарел (deprecated)</b>.</p>
+        <p>Современный способ — это создание <code>@Configuration</code> класса, в котором вы определяете бин типа <b><code>SecurityFilterChain</code></b>.</p>
+        <pre class="language-java"><code>@Configuration
+@EnableWebSecurity // Включает веб-безопасность Spring
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // Здесь мы настраиваем цепочку фильтров с помощью удобного Lambda DSL
+        http
+            .authorizeHttpRequests(auth -&gt; auth
+                .requestMatchers("/public/**", "/login").permitAll() // Разрешить доступ к этим URL всем
+                .requestMatchers("/admin/**").hasRole("ADMIN") // Только для админов
+                .anyRequest().authenticated() // Все остальные запросы требуют аутентификации
+            )
+            .formLogin(Customizer.withDefaults()); // Включить стандартную форму входа
+
+        return http.build();
+    }
+}
+</code></pre>
+        <hr>
+        <h2>AuthenticationManager и UserDetailsService</h2>
+        <p>Как Spring Security узнает, правильный ли пароль ввел пользователь?</p>
+        <p>В центре процесса аутентификации стоит <code>AuthenticationManager</code>. Он получает "токен аутентификации" (например, с логином и паролем) и должен решить, валиден ли он.</p>
+        <p><code>AuthenticationManager</code> делегирует загрузку данных о пользователе специальному интерфейсу — <b><code>UserDetailsService</code></b>.</p>
+        <p><b><code>UserDetailsService</code></b> имеет всего один метод:
+            <code>UserDetails loadUserByUsername(String username) throws UsernameNotFoundException;</code></p>
+        <p>Его задача — по имени пользователя найти его данные (включая хэш пароля и роли) и вернуть их в виде объекта <code>UserDetails</code>.</p>
+        <h4>Последовательность проверки безопасности</h4>
+        <p>Эта диаграмма иллюстрирует последовательный процесс обеспечения безопасности: сначала система проверяет, кто вы (Аутентификация), и только в случае успеха определяет, что вам разрешено делать (Авторизация).</p>
+        <div class="mermaid">
+            sequenceDiagram
+            participant Filter as "Authentication Filter"
+            participant AuthManager as "AuthenticationManager"
+            participant UserDetailsSvc as "UserDetailsService"
+            participant PasswordEncoder as "PasswordEncoder"
+
+            Filter->>AuthManager: 1. authenticate(username, rawPassword)
+            activate AuthManager
+
+            AuthManager->>UserDetailsSvc: 2. loadUserByUsername(username)
+            activate UserDetailsSvc
+            Note right of UserDetailsSvc: Запрос к БД...
+            UserDetailsSvc-->>AuthManager: 3. UserDetails (с хешем пароля)
+            deactivate UserDetailsSvc
+
+            AuthManager->>PasswordEncoder: 4. matches(rawPassword, hashedPassword)
+            activate PasswordEncoder
+            PasswordEncoder-->>AuthManager: 5. true / false
+            deactivate PasswordEncoder
+
+            alt Пароль верный
+            AuthManager-->>Filter: 6a. Authentication (объект с Principal и Authorities)
+            else Пароль неверный
+            AuthManager-->>Filter: 6b. AuthenticationException
+            end
+            deactivate AuthManager
+        </div>
+        <hr>
+        <h2>Хранение пользователей в БД</h2>
+        <p>Наша задача — реализовать <code>UserDetailsService</code>, который будет "ходить" в БД.</p>
+        <pre class="language-java"><code>@Service // Это обычный Spring-компонент
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+    // ... конструктор с @Autowired ...
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        // 1. Находим нашего пользователя в БД
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -&gt; new UsernameNotFoundException("User not found: " + username));
+
+        // 2. Создаем и возвращаем объект UserDetails, который понимает Spring Security
+        return new org.springframework.security.core.userdetails.User(
+            user.getUsername(),
+            user.getPassword(), // Здесь должен быть хэшированный пароль!
+            // Преобразуем наши роли в GrantedAuthority
+            user.getRoles().stream()
+                .map(role -&gt; new SimpleGrantedAuthority(role.getName()))
+                .collect(Collectors.toList())
+        );
+    }
+}
+</code></pre>
+        <hr>
+        <h2>Шифрование паролей</h2>
+        <p><b>НИКОГДА, НИКОГДА, НИКОГДА</b> не храните пароли в базе данных в открытом виде или с использованием слабых алгоритмов хэширования (MD5, SHA-1).</p>
+        <p>Spring Security предоставляет интерфейс <b><code>PasswordEncoder</code></b> для безопасного хэширования паролей. Стандартная и рекомендуемая реализация — <b><code>BCryptPasswordEncoder</code></b>.</p>
+        <p><b>BCrypt</b> — это адаптивный алгоритм. Он не только хэширует пароль, но и добавляет к нему случайную "соль" (salt), а также позволяет настроить "сложность" (work factor), чтобы хэширование занимало определенное время, делая перебор паролей (brute-force) очень медленным.</p>
+        <p>Вы должны объявить бин <code>PasswordEncoder</code> в вашей конфигурации:</p>
+        <pre class="language-java"><code>@Bean
+public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+}
+</code></pre>
+        <p>При регистрации пользователя вы используете <code>passwordEncoder.encode(rawPassword)</code> для получения хэша.</p>
+        <hr>
+        <h2>Процесс проверки пароля</h2>
+        <p>При входе пользователя в систему Spring Security <b>не расшифровывает</b> пароль из базы. Это невозможно.</p>
+        <p>Вместо этого происходит следующее:</p>
+        <h4>Схема аутентификации</h4>
+        <div class="mermaid">
+            sequenceDiagram
+            participant User as 👤 Пользователь
+            participant Security as 🛡️ Spring Security
+            participant Encoder as 🔑 PasswordEncoder
+            participant DB as 🗄️ База данных
+
+            User->>Security: Вводит логин и пароль ("my_password")
+            activate Security
+
+            Security->>DB: Загружает UserDetails (с хэшем из БД)
+            activate DB
+            DB-->>Security: Хэш: "$2a$10$N9qo8uLOickgx2ZMR..."
+            deactivate DB
+
+            Note over Security, Encoder: Security не сравнивает строки!
+            Security->>Encoder: encoder.matches("my_password", "$2a$10$N9qo8uLOickgx2ZMR...")
+            activate Encoder
+            Note right of Encoder: BCrypt извлекает соль из хэша,<br/>хэширует введенный пароль с этой солью<br/>и сравнивает результаты.
+            Encoder-->>Security: true / false
+            deactivate Encoder
+
+            alt Пароль верный
+            Security-->>User: Аутентификация успешна
+            else Пароль неверный
+            Security-->>User: Ошибка аутентификации
+            end
+
+            deactivate Security
+        </div>
+        <hr>
+        <h2>Конфигурация авторизации</h2>
+        <p>Авторизация — это настройка правил доступа. Основной способ — использование Lambda DSL в бине <code>SecurityFilterChain</code>.</p>
+        <pre class="language-java"><code>@Bean
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .authorizeHttpRequests(auth -&gt; auth
+            // Правила применяются по порядку, от более конкретных к более общим
+            .requestMatchers("/css/**", "/js/**").permitAll() // Статические ресурсы доступны всем
+            .requestMatchers("/admin/**").hasRole("ADMIN") // URL для админов
+            .requestMatchers("/profile/**").hasAnyRole("USER", "ADMIN") // Для пользователей и админов
+            .requestMatchers("/api/public/**").permitAll()
+            .anyRequest().authenticated() // Все остальные URL требуют входа
+        );
+        // ... другие настройки ...
+    return http.build();
+}
+</code></pre>
+        <p><code>hasRole("ADMIN")</code> на самом деле проверяет наличие полномочия <code>ROLE_ADMIN</code>.</p>
+        <hr>
+        <h2>Метод-уровневая безопасность</h2>
+        <p>Иногда правила доступа зависят не от URL, а от сложной бизнес-логики (например, "редактировать пост может только его автор или админ"). Описывать такие правила через URL неудобно.</p>
+        <p>Для этого существует <b>метод-уровневая безопасность</b>.</p>
+        <ol>
+            <li>Включаем ее в конфигурации: <code>@EnableMethodSecurity</code>.</li>
+            <li>Используем аннотации прямо на методах ваших сервисов.</li>
+        </ol>
+        <pre class="language-java"><code>@Service
+public class PostService {
+
+    @PreAuthorize("hasRole('ADMIN') or #post.author.username == authentication.name")
+    public void editPost(Post post, PostUpdateDto data) {
+        // ... логика редактирования ...
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deletePost(Long postId) {
+        // ... логика удаления ...
+    }
+}
+</code></pre>
+        <p><code>@PreAuthorize</code> использует мощный язык выражений <b>SpEL (Spring Expression Language)</b>, который дает доступ к текущему пользователю (<code>authentication</code>), аргументам метода и т.д.</p>
+        <hr>
+        <h2>Роли и полномочия (Authorities)</h2>
+        <p>В Spring Security фундаментальным понятием является <b><code>GrantedAuthority</code></b> (полномочие). Это единичное право, которое может быть предоставлено пользователю.</p>
+        <p><b>Роль</b> — это просто соглашение. По умолчанию, Spring Security считает, что роль — это <code>GrantedAuthority</code>, имя которой начинается с префикса <code>ROLE_</code>.</p>
+        <p>Выражение <code>hasRole("ADMIN")</code> — это всего лишь сокращение для <code>hasAuthority("ROLE_ADMIN")</code>.</p>
+        <p>Вы можете использовать чистые <code>Authorities</code> без ролей, если ваша модель доступа более гранулярная.
+            <code>.requestMatchers("/posts/delete").hasAuthority("CAN_DELETE_POSTS")</code></p>
+        <hr>
+        <h2>Управление сессиями</h2>
+        <p>После успешной аутентификации Spring Security по умолчанию начинает управлять <b>HTTP-сессией</b>.</p>
+        <ol>
+            <li>Создается объект <code>Authentication</code>, содержащий информацию о пользователе (имя, роли).</li>
+            <li>Этот объект помещается в <code>SecurityContext</code>, который, в свою очередь, хранится в HTTP-сессии на сервере.</li>
+            <li>Сервер отправляет клиенту (браузеру) cookie с идентификатором сессии, обычно <code>JSESSIONID</code>.</li>
+            <li>При каждом последующем запросе браузер автоматически отправляет эту cookie. Spring Security находит сессию по ID, извлекает <code>SecurityContext</code> и "узнает" пользователя.</li>
+        </ol>
+        <p>Этот механизм называется <b>stateful</b>, так как сервер хранит состояние (сессию) для каждого клиента.</p>
+        <hr>
+        <h2>Stateless Security</h2>
+        <p>Stateful-подход с сессиями отлично работает для традиционных веб-приложений (монолитов).</p>
+        <p>Однако в мире <b>микросервисов</b> и современных фронтендов (React, Angular) предпочтителен <b>stateless-подход</b>.</p>
+        <p>Если у вас 10 экземпляров одного сервиса, запрос может попасть на любой из них. Как они будут делить одну сессию? (Требуется сложная репликация сессий).</p>
+        <p>Не хранить состояние на сервере вообще. Вместо <code>JSESSIONID</code>, сервер после логина выдает клиенту <b>токен</b>. Клиент должен прикладывать этот токен к каждому запросу. Сервер проверяет валидность токена при каждом запросе, не обращаясь к сессии.</p>
+        <p>Этот подход мы подробно изучим на следующем уровне.</p>
+        <hr>
+    </db-content>
+</div>
+</body>
+</html>
