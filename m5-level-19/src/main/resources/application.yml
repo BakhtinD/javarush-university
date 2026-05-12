@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: m5-level-19
+
+  # База данных H2 в памяти
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+# ============================================================
+# Конфигурация Spring Boot Actuator
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        # Открываем эндпоинты по HTTP.
+        # В продакшене никогда не открывайте '*' или env/heapdump без защиты!
+        include: health, info, metrics, prometheus, loggers, env
+
+  endpoint:
+    health:
+      # "always"        — показывать детали всем (только для обучения!)
+      # "when_authorized" — показывать только авторизованным пользователям
+      # "never"         — только общий статус UP/DOWN
+      show-details: always
+
+    env:
+      # Маскируем чувствительные ключи в /actuator/env
+      keys-to-sanitize: password, secret, key, token, credentials
+
+  # Информация об этом приложении (эндпоинт /actuator/info)
+  info:
+    env:
+      enabled: true
+
+# Данные для /actuator/info
+info:
+  app:
+    name: m5-level-19 Spring Boot Actuator Demo
+    version: 1.0.0
+    description: Учебный проект по Spring Boot Actuator и мониторингу
+  java:
+    version: 17

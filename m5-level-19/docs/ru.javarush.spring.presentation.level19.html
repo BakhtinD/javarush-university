@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ru" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://super-dev-styles.github.io/website-assets/slides.css" rel="stylesheet">
+    <script src="https://super-dev-styles.github.io/website-assets/slides.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <link href="https://super-dev-styles.github.io/website-assets/styles.css" rel="stylesheet">
+    <link href="https://super-dev-styles.github.io/website-assets/view.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: false });</script>
+    <title>Уровень 19: Spring Boot Actuator и мониторинг приложений</title>
+</head>
+<body>
+<div class="content lecture-content post-content">
+    <db-content>
+        <h1>Уровень 19: Spring Boot Actuator и мониторинг приложений</h1>
+        <p>Мы написали, протестировали и защитили наше приложение. Последний шаг перед отправкой в "реальный мир" — научиться за ним наблюдать. Развернутое приложение не должно быть "черным ящиком".</p>
+        <p>На этом уровне мы изучим <b>Spring Boot Actuator</b> — встроенный инструмент, который превращает ваше приложение в прозрачную и управляемую систему. Вы узнаете, как с помощью его <b>эндпоинтов</b> проверять "здоровье" приложения, анализировать метрики производительности и управлять конфигурацией на лету. Затем мы сделаем шаг к профессиональному мониторингу: интегрируем наше приложение с <b>Prometheus</b> для сбора метрик и <b>Grafana</b> для их визуализации. Вы также научитесь создавать собственные, бизнес-ориентированные метрики с помощью <b>Micrometer</b>.</p>
+        <hr>
+        <h2>Зачем нужен мониторинг?</h2>
+        <p>Представьте, что ваше приложение развернуто на сервере. Как ответить на эти вопросы?</p>
+        <ul>
+            <li>Оно вообще работает прямо сейчас?</li>
+            <li>Подключено ли оно к базе данных?</li>
+            <li>Почему оно стало медленно отвечать в последний час?</li>
+            <li>Сколько памяти оно потребляет?</li>
+            <li>Не заканчивается ли на диске место?</li>
+        </ul>
+        <p>Без инструментов мониторинга ваше приложение — это "черный ящик". Вы узнаете о проблемах только тогда, когда позвонят разгневанные пользователи.</p>
+        <hr>
+        <h2>Что такое Spring Boot Actuator?</h2>
+        <p><b>Spring Boot Actuator</b> — это проект из экосистемы Spring, который предоставляет "production-ready" функциональность для ваших приложений.</p>
+        <p>Основная функциональность Actuator — это предоставление ряда HTTP-эндпоинтов (или JMX-бинов), которые раскрывают внутреннюю информацию о состоянии и работе приложения.
+            Вам не нужно писать этот код с нуля. Actuator предоставляет готовые, стандартизированные инструменты для диагностики.</p>
+        <h4>Место Actuator'а в Spring Boot приложении</h4>
+        <p>Диаграмма показывает, как Spring Boot Actuator встраивается в ваше приложение, работая рядом с бизнес-логикой и предоставляя через HTTP-эндпоинты доступ к внутренним данным и метрикам JVM и Spring-контекста.</p>
+        <div class="mermaid">
+            graph TD
+            subgraph "Ваше Spring Boot приложение (Один JVM процесс)"
+            BusinessLogic["<b>Ваш код</b><br/>@RestController<br/>@Service<br/>@Repository"]
+            Actuator["<b>Spring Boot Actuator</b><br/>/actuator/health<br/>/actuator/metrics<br/>..."]
+
+            subgraph "Внутреннее состояние"
+            SpringContext["Spring ApplicationContext"]
+            JVM["JVM (Память, Потоки, CPU)"]
+            end
+
+            BusinessLogic -- "работает с" --> SpringContext
+            Actuator -- "читает данные из" --> SpringContext
+            Actuator -- "читает данные из" --> JVM
+            end
+
+            Client["👤 Клиент / API"] -- "HTTP-запросы" --> BusinessLogic
+            Monitoring["⚙️ Система мониторинга"] -- "HTTP-запросы" --> Actuator
+        </div>
+        <hr>
+        <h2>Подключение Actuator</h2>
+        <p>Как и многое в Spring Boot, подключение Actuator — это вопрос добавления одной зависимости в <code>pom.xml</code>:</p>
+        <pre class="language-xml"><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-actuator&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+        <p>После добавления этого стартера и перезапуска приложения Spring Boot автоматически сконфигурирует и предоставит доступ к базовым эндпоинтам.</p>
+        <p>По умолчанию, из соображений безопасности, большинство эндпоинтов доступны только через JMX. Чтобы сделать их доступными по HTTP, нужна дополнительная настройка.</p>
+        <hr>
+        <h2>Основные эндпоинты</h2>
+        <p>Actuator предоставляет множество эндпоинтов. Вот четыре самых важных для начала:</p>
+        <ul>
+            <li><code>/actuator/health</code> - показывает обобщенную информацию о "здоровье" приложения.</li>
+            <li><code>/actuator/info</code> - отображает произвольную информацию о приложении (например, версию сборки).</li>
+            <li><code>/actuator/metrics</code> - позволяет посмотреть детальные метрики (CPU, память, потоки, HTTP-запросы и т.д.).</li>
+            <li><code>/actuator/env</code> - показывает все переменные окружения и свойства конфигурации, с которыми запущено приложение.</li>
+        </ul>
+        <p>Чтобы получить к ним доступ, их нужно "открыть" в <code>application.yml</code>.</p>
+        <hr>
+        <h2>Эндпоинт `/health`</h2>
+        <p>Это самый важный эндпоинт. Системы оркестрации (Kubernetes, Docker Swarm) и балансировщики нагрузки постоянно опрашивают его, чтобы понять, жив ли данный экземпляр приложения.</p>
+        <p>Простой ответ:</p>
+        <pre class="language-json"><code>{ "status": "UP" }
+</code></pre>
+        <p><code>status: "DOWN"</code> будет, если приложение не смогло запуститься или один из критических компонентов отказал.</p>
+        <p>Эндпоинт агрегирует статусы от нескольких <b><code>HealthIndicator</code></b>'ов. Spring Boot автоматически предоставляет индикаторы для баз данных, дискового пространства, RabbitMQ и т.д. Если, например, приложение не сможет подключиться к БД, общий статус станет <code>DOWN</code>.</p>
+        <hr>
+        <h2>Эндпоинт `/metrics`</h2>
+        <p>Этот эндпоинт дает доступ к огромному количеству метрик производительности.</p>
+        <p><code>GET /actuator/metrics</code> вернет список всех доступных метрик, например:</p>
+        <ul>
+            <li><code>jvm.memory.used</code>: использованная память.</li>
+            <li><code>system.cpu.usage</code>: загрузка CPU.</li>
+            <li><code>http.server.requests</code>: статистика по HTTP-запросам (количество, время ответа).</li>
+            <li><code>tomcat.threads.busy</code>: количество занятых потоков в Tomcat.</li>
+        </ul>
+        <p>Чтобы посмотреть значение конкретной метрики, нужно обратиться к <code>GET /actuator/metrics/{metric.name}</code>. Например, <code>GET /actuator/metrics/jvm.memory.used</code>.</p>
+        <hr>
+        <h2>Конфигурация Actuator</h2>
+        <p>Управление эндпоинтами происходит в <code>application.yml</code>.</p>
+        <pre class="language-yaml"><code>management:
+  endpoints:
+    web:
+      exposure:
+        # Указываем, какие эндпоинты открыть по HTTP
+        # '*' - для всех, но это небезопасно!
+        include: health, info, metrics, prometheus, loggers
+        # exclude: env # Можно явно исключить опасные
+
+  endpoint:
+    health:
+      # По умолчанию детали не показываются, только общий статус
+      # "when_authorized" - показывать авторизованным пользователям
+      # "always" - показывать всегда (не рекомендуется для продакшена)
+      show-details: when_authorized
+</code></pre>
+        <p>Это позволяет гибко настраивать, какая информация будет доступна по сети.</p>
+        <hr>
+        <h2>Безопасность Actuator</h2>
+        <p>Некоторые эндпоинты Actuator могут раскрывать чувствительную информацию!</p>
+        <ul>
+            <li><code>/env</code> показывает все переменные окружения, включая пароли и ключи API.</li>
+            <li><code>/heapdump</code> создает и отдает полный дамп памяти JVM.</li>
+            <li><code>/shutdown</code> (по умолчанию выключен) позволяет выключить приложение через HTTP-запрос.</li>
+        </ul>
+        <p><b>Никогда не открывайте эти эндпоинты для публичного доступа!</b></p>
+        <p>Если в проекте есть <code>spring-boot-starter-security</code>, Actuator автоматически интегрируется с ним. Вы можете настроить правила доступа к эндпоинтам так же, как и для обычных URL.</p>
+        <pre class="language-java"><code>// В конфигурации SecurityFilterChain
+http.authorizeHttpRequests(auth -&gt; auth
+    .requestMatchers("/actuator/health", "/actuator/info").permitAll() // Открыты для всех
+    .requestMatchers("/actuator/**").hasRole("ADMIN") // Остальные - только для админов
+    // ...
+);
+</code></pre>
+        <hr>
+        <h2>Кастомные индикаторы здоровья</h2>
+        <p>Что если ваше приложение зависит от внешнего API, которое не имеет автоконфигурации от Spring Boot? Вы можете написать свой собственный <code>HealthIndicator</code>.</p>
+        <p>Это простой класс, реализующий интерфейс <code>HealthIndicator</code>.</p>
+        <pre class="language-java"><code>@Component
+public class ExternalApiServiceHealthIndicator implements HealthIndicator {
+
+    private final ExternalApiClient apiClient; // Ваш клиент для внешнего API
+    // ... конструктор ...
+
+    @Override
+    public Health health() {
+        try {
+            // Пытаемся выполнить тестовый запрос к внешнему сервису
+            if (apiClient.isServiceAvailable()) {
+                // Если все хорошо, возвращаем статус UP
+                return Health.up().withDetail("message", "Service is available").build();
+            } else {
+                return Health.down().withDetail("message", "Service responded with an error").build();
+            }
+        } catch (Exception e) {
+            // Если произошла ошибка, возвращаем DOWN
+            return Health.down(e).withDetail("message", "Connection failed").build();
+        }
+    }
+}
+</code></pre>
+        <p>Теперь статус этого индикатора будет автоматически включен в общий ответ <code>/actuator/health</code>.</p>
+        <hr>
+        <h2>Интеграция с Prometheus</h2>
+        <p>Проверять метрики вручную через <code>/actuator/metrics</code> неудобно. Нужна система, которая будет <b>собирать</b> эти данные постоянно, <b>хранить</b> их и позволять строить <b>графики</b> и <b>алерты</b>.</p>
+        <p><b>Prometheus</b> — это open-source система мониторинга, которая стала стандартом в этой области.</p>
+        <p>Prometheus работает по <b>Pull-модели</b>: он не ждет, пока приложения пришлют ему данные. Вместо этого он сам периодически (например, каждые 15 секунд) обходит все настроенные эндпоинты (<code>/actuator/prometheus</code>) и "скрапит" (scrape) с них текущие значения метрик.</p>
+        <p>Эта диаграмма сравнивает две модели сбора метрик: Push, где приложения сами отправляют данные в систему мониторинга, и Pull, где система мониторинга (Prometheus) сама периодически опрашивает приложения.</p>
+        <div class="mermaid">
+            graph LR
+            subgraph "Push-модель"
+            direction TB
+            App1["Приложение 1"] -- "Push метрик" --> Monitoring1[Система<br/>мониторинга]
+            App2["Приложение 2"] -- "Push метрик" --> Monitoring1
+            App3["Приложение 3"] -- "Push метрик" --> Monitoring1
+
+            end
+
+            subgraph "Pull-модель"
+            direction TB
+            Monitoring2[<b>Prometheus</b>] -- "Pull (scrape)" --> App4["Приложение 1"]
+            Monitoring2 -- "Pull (scrape)" --> App5["Приложение 2"]
+            Monitoring2 -- "Pull (scrape)" --> App6["Приложение 3"]
+
+            end
+        </div>
+        <hr>
+        <h2>Настройка экспорта в Prometheus</h2>
+        <p>Интеграция с Prometheus в Spring Boot делается в два шага:</p>
+        <ol>
+            <li><b>Добавить зависимость:</b> Она предоставит <code>PrometheusMeterRegistry</code>, который будет собирать метрики в формате, понятном для Prometheus.
+                <pre class="language-xml"><code>&lt;dependency&gt;
+    &lt;groupId&gt;io.micrometer&lt;/groupId&gt;
+    &lt;artifactId&gt;micrometer-registry-prometheus&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+            </li>
+            <li><b>Открыть эндпоинт в <code>application.yml</code>:</b>
+                <pre class="language-yaml"><code>management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+</code></pre>
+            </li>
+        </ol>
+        <p>После этого ваше приложение на эндпоинте <code>/actuator/prometheus</code> будет отдавать все свои метрики в текстовом формате, готовом для скрапинга Prometheus'ом.</p>
+        <hr>
+        <h2>Визуализация в Grafana</h2>
+        <p>Сам по себе Prometheus — это в первую очередь база данных для метрик и система алертинга. У него есть простой UI для выполнения запросов, но для создания красивых и информативных дашбордов используется <b>Grafana</b>.</p>
+        <p><b>Grafana</b> — это open-source платформа для визуализации и аналитики.</p>
+        <h4>Стек мониторинга</h4>
+        <div class="mermaid">
+            graph TD
+            A[Ваше Spring Boot приложение] -- предоставляет --> B["/actuator/prometheus"];
+            C[Prometheus Server] -- 1. Скрапит метрики (Pull) --> B;
+            C -- 2. Хранит данные --> D[(Prometheus TSDB)];
+            E[Grafana] -- 3. Запрашивает данные для дашбордов --> C;
+            F[Вы] -- 4. Смотрите дашборды --> E;
+        </div>
+        <p>Grafana подключается к Prometheus как к источнику данных (DataSource) и позволяет строить графики, гистограммы и дашборды, отображающие состояние вашей системы в реальном времени.</p>
+        <hr>
+        <h2>Кастомные метрики с Micrometer</h2>
+        <p>Actuator предоставляет множество системных метрик, но часто нам нужны метрики, специфичные для нашего бизнеса.</p>
+        <p>Spring Boot Actuator использует библиотеку <b>Micrometer</b> как фасад для работы с метриками. Micrometer позволяет писать код для сбора метрик один раз, а экспортировать их в разные системы (Prometheus, Datadog, InfluxDB и т.д.).</p>
+        <p>Основные типы метрик:</p>
+        <ul>
+            <li><code>Counter</code>: счетчик, который может только увеличиваться (например, <code>orders_created_total</code>).</li>
+            <li><code>Gauge</code>: "датчик", показывающий текущее значение  (<code>queue_size</code>).</li>
+            <li><code>Timer</code>: измеряет длительность и количество событий (<code>http_request_duration_seconds</code>).</li>
+        </ul>
+        <pre class="language-java"><code>@Service
+public class OrderService {
+    private final Counter ordersCreatedCounter;
+
+    // Внедряем MeterRegistry - фабрику для создания метрик
+    public OrderService(MeterRegistry meterRegistry) {
+        this.ordersCreatedCounter = meterRegistry.counter("orders.created.total", "region", "europe");
+    }
+
+    public void createOrder(Order order) {
+        // ... бизнес-логика ...
+
+        // Увеличиваем наш кастомный счетчик
+        ordersCreatedCounter.increment();
+    }
+}
+</code></pre>
+        <hr>
+        <h2>Логирование через Actuator</h2>
+        <p>Эндпоинт <code>/loggers</code> — очень полезный инструмент для отладки на работающем приложении.</p>
+        <p><code>GET /actuator/loggers</code> показывает все сконфигурированные логгеры в приложении и их текущие уровни (INFO, DEBUG, ERROR и т.д.).</p>
+        <p>Самая мощная возможность — изменять уровень логирования на лету с помощью POST-запроса, <b>без перезапуска приложения</b>.</p>
+        <p><code>POST /actuator/loggers/com.example.service.PaymentService</code>
+            <b>Тело запроса:</b> <code>{ "configuredLevel": "DEBUG" }</code></p>
+        <p>Это позволяет временно включить детальное логирование для проблемного компонента прямо на продакшене, чтобы найти причину ошибки, а затем вернуть уровень обратно на <code>INFO</code>.</p>
+        <hr>
+    </db-content>
+</div>
+</body>
+</html>

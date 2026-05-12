@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ru" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://super-dev-styles.github.io/website-assets/slides.css" rel="stylesheet">
+    <script src="https://super-dev-styles.github.io/website-assets/slides.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <link href="https://super-dev-styles.github.io/website-assets/styles.css" rel="stylesheet">
+    <link href="https://super-dev-styles.github.io/website-assets/view.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: false });</script>
+    <title>Уровень 18: OAuth2 и JWT для микросервисов</title>
+</head>
+<body>
+<div class="content lecture-content post-content">
+    <db-content>
+        <h1>Уровень 18: OAuth2 и JWT для микросервисов</h1>
+        <p>Мы переходим от классической безопасности на основе сессий к современному <b>stateless-подходу</b>, который является стандартом для REST API и микросервисной архитектуры. Вы познакомитесь с двумя фундаментальными технологиями: <b><a href="https://assets.bytebytego.com/diagrams/0112-oauth-flows.png">OAuth2</a></b>, фреймворком для делегированной авторизации, и <b>JSON Web Tokens (JWT)</b>, стандартом для создания безопасных токенов доступа.</p>
+        <p>Мы разберем структуру JWT, поймем, как цифровая подпись гарантирует его целостность, и реализуем полный цикл stateless-аутентификации в Spring Security. Вы научитесь создавать собственный фильтр для обработки токенов и поймете, зачем нужны <b>Refresh-токены</b>.</p>
+        <p><img data-max-width="1024" data-id="1472aa38-e944-417e-a1b2-443dc2432a2e" src="https://cdn.javarush.com/images/article/1472aa38-e944-417e-a1b2-443dc2432a2e/1024.jpeg" alt=""></p>
+        <hr>
+        <h2>Stateful vs. Stateless</h2>
+        <p>Давайте вспомним, почему сессии (stateful-подход) плохо подходят для микросервисов:</p>
+        <ol>
+            <li>Если вы запускаете несколько экземпляров одного сервиса, вам нужна сложная и дорогая репликация сессий между ними, иначе пользователь будет "разлогиниваться" при каждом запросе, попадающем на новый экземпляр. <b>Проблема масштабирования.</b></li>
+            <li>Клиент "привязан" к сессии на сервере.</li>
+            <li>Традиционные сессии на основе cookie плохо работают с клиентами, которые не являются браузерами (например, мобильные приложения, другие микросервисы).</li>
+        </ol>
+        <p><b>Stateless-подход</b> решает эти проблемы. Сервер <b>не хранит</b> состояние аутентификации. Вместо этого клиент при каждом запросе предоставляет <b>самодостаточный токен</b>, который содержит всю необходимую информацию для его аутентификации и авторизации.</p>
+        <p>Эта диаграмма сравнивает stateful-архитектуру (с общей базой сессий) и stateless-архитектуру (с JWT-токенами), наглядно демонстрируя, как stateless-подход упрощает масштабирование и повышает отказоустойчивость.</p>
+        <div class="mermaid">
+            graph TD
+            subgraph "❌ Stateful (с сессиями)"
+            direction TB
+            LB1[Load Balancer]
+            subgraph "Сервисы"
+            S1["Instance 1"]
+            S2["Instance 2"]
+            S3["Instance 3"]
+            end
+            SessionDB[("🌐 Shared Session<br/>Storage (e.g., Redis)")]
+
+            LB1 --> S1 & S2 & S3
+            S1 &lt;--> SessionDB
+            S2 &lt;--> SessionDB
+            S3 &lt;--> SessionDB
+
+            end
+
+            subgraph "✅ Stateless (с JWT)"
+            direction TB
+            LB2[Load Balancer]
+            subgraph "Сервисы"
+            S4["Instance 1"]
+            S5["Instance 2"]
+            S6["Instance 3"]
+            end
+
+            LB2 --> S4 & S5 & S6
+            end
+        </div>
+        <hr>
+        <h2>Что такое OAuth2?</h2>
+        <p><b>OAuth2</b> — это открытый <b>фреймворк авторизации</b>. Важно понимать его основную цель.</p>
+        <p>OAuth2 — это не про аутентификацию (проверку личности пользователя). Это про <b>делегирование доступа</b>. Он предоставляет приложениям ("клиентам") ограниченный доступ к ресурсам пользователя на HTTP-сервисе без необходимости передавать приложению логин и пароль пользователя.</p>
+        <p>Когда вы нажимаете "Войти с помощью Google" на каком-либо сайте, этот сайт (клиент) не получает ваш пароль от Google. Вместо этого вы (владелец ресурса) даете сайту разрешение (в виде токена) получить доступ к вашему имени и email-адресу (ресурсам) на серверах Google.</p>
+        <p><img data-max-width="800" data-id="3ffea898-235d-445b-a739-e1c5740c02d8" src="https://cdn.javarush.com/images/article/3ffea898-235d-445b-a739-e1c5740c02d8/800.jpeg" alt=""></p>
+        <hr>
+        <h2>Роли в OAuth2</h2>
+        <p>Фреймворк OAuth2 определяет четыре основные роли:</p>
+        <ul>
+            <li><b>Resource Owner</b> это вы, пользователь. Вы владеете своими данными и можете давать разрешения на доступ к ним.</li>
+            <li><b>Client</b> приложение, которое хочет получить доступ к ресурсам владельца.</li>
+            <li><b>Authorization Server</b> сервер, который аутентифицирует владельца ресурса и выдает клиенту <b>токены доступа (Access Tokens)</b> после получения согласия. Это "вышибала", который проверяет пропуски.</li>
+            <li><b>Resource Server</b> сервер, на котором хранятся защищенные ресурсы. Он доверяет токенам, выданным сервером авторизации, и предоставляет доступ к данным, если клиент предъявил валидный токен.</li>
+        </ul>
+        <p>Взаимодействие ролей в OAuth2</p>
+        <div class="mermaid">
+            sequenceDiagram
+            participant RO as "Resource Owner"
+            participant Client as "Client "
+            participant Auth as "Authorization Server"
+            participant RS as "Resource Server"
+
+            RO->>Client: 1. "Хочу использовать приложение"
+
+            Client->>RO: 2. Перенаправляет на Auth Server для логина
+
+            RO->>Auth: 3. Вводит логин/пароль
+            activate Auth
+            Auth-->>RO: 4. Спрашивает: "Разрешить<br/>приложению доступ к данным?"
+            deactivate Auth
+
+            RO->>Client: 5. "Да, разрешаю" (через редирект с кодом)
+
+            Client->>Auth: 6. Обменивает код на Access Token
+            activate Auth
+            Auth-->>Client: 7. Access Token (JWT)
+            deactivate Auth
+
+            Client->>RS: 8. Запрос данных с Access Token
+            activate RS
+            Note right of RS: Проверяет токен
+            RS-->>Client: 9. Защищенные данные
+            deactivate RS
+        </div>
+        <hr>
+        <h2>Что такое JWT?</h2>
+        <p>Хотя OAuth2 не предписывает конкретный формат токенов, стандартом де-факто для их реализации стал <b>JWT (JSON Web Token)</b>.</p>
+        <p><b>JWT</b> — это открытый стандарт (RFC 7519), который определяет компактный и самодостаточный способ для безопасной передачи информации между сторонами в виде JSON-объекта.</p>
+        <p>"Самодостаточный" — ключевое слово. Вся необходимая информация (кто пользователь, какие у него права, до какого времени токен действителен) находится <b>внутри самого токена</b>.</p>
+        <p>"Безопасный" — потому что JWT может быть <b>цифровым образом подписан</b>. Это гарантирует, что токен не был подделан или изменен в пути.</p>
+        <img src="https://cdn.javarush.com/images/article/d4ce05b7-612d-45ae-aec2-15bf9334d684/original.jpeg" alt="">
+        <hr>
+        <h2>Структура JWT</h2>
+        <p>JWT выглядит как длинная строка, состоящая из трех частей, разделенных точками: <code>xxxxx.yyyyy.zzzzz</code></p>
+        <h4><code>Header.Payload.Signature</code></h4>
+        <div class="mermaid">
+            graph TD
+            subgraph "JWT Token"
+            Header["Header (Заголовок)"]
+            Payload["Payload (Полезная нагрузка)"]
+            Signature["Signature (Подпись)"]
+            end
+
+            subgraph "Содержимое"
+            Header_Content["Тип и алгоритм<br/>{ alg: 'HS256', typ: 'JWT' }"]
+            Payload_Content["Утверждения (Claims) <br/>{ sub: 'user123', roles: ['USER'], exp: 1661443200 }"]
+            Signature_Content["Криптографическая <br/> подпись<br/>HMACSHA256( encodedHeader + '.' + encodedPayload, secret )"]
+            end
+
+            Header --> Header_Content
+            Payload --> Payload_Content
+            Signature --> Signature_Content
+        </div>
+        <p>Каждая из первых двух частей — это JSON, закодированный в <b>Base64Url</b>. Их легко раскодировать, поэтому в них <b>нельзя хранить секреты</b>. Секретность обеспечивает только третья часть — подпись.</p>
+        <hr>
+        <h2>Payload (Claims)</h2>
+        <p>Payload — это сердце токена. Он содержит <b>утверждения (claims)</b> — информацию о пользователе и метаданные токена.</p>
+        <p>Существует три типа claims:</p>
+        <ul>
+            <li><b>Registered (Стандартные),</b> предопределенные, но необязательные.
+                <ul>
+                    <li><code>sub</code> (Subject): идентификатор пользователя.</li>
+                    <li><code>exp</code> (Expiration Time): время, когда токен "протухнет" (в формате Unix timestamp).</li>
+                    <li><code>iat</code> (Issued At): время, когда токен был выдан.</li>
+                </ul>
+            </li>
+            <li><b>Public (Публичные):</b> могут быть любыми, но их имена должны быть уникальными, чтобы избежать коллизий (часто используют URI).</li>
+            <li><b>Private (Приватные):</b> кастомные утверждения, о которых договорились клиент и сервер. Самое частое применение — передача ролей и прав доступа.
+                <ul>
+                    <li><code>roles: ["USER", "MODERATOR"]</code></li>
+                    <li><code>permissions: ["READ_POSTS", "CREATE_COMMENTS"]</code></li>
+                </ul>
+            </li>
+        </ul>
+        <hr>
+        <h2>Signature</h2>
+        <p><b>Подпись</b> — это то, что делает JWT безопасным. Она гарантирует <b>целостность</b> токена.</p>
+        <p>Как она создается:</p>
+        <ol>
+            <li>Берутся закодированные заголовок и полезная нагрузка.</li>
+            <li>Они объединяются через точку.</li>
+            <li>Полученная строка хэшируется с использованием алгоритма, указанного в заголовке (<code>alg</code>), и <b>секретного ключа</b>, который известен только серверу.</li>
+        </ol>
+        <p>Когда сервер получает токен, он повторяет эту операцию. Если сгенерированная им подпись совпадает с той, что в токене, значит, токен <b>подлинный</b> и его payload не был изменен. Если подписи не совпадают — токен подделан и должен быть отвергнут.</p>
+        <hr>
+        <h2>Поток аутентификации с JWT</h2>
+        <h4>Схема Stateless-аутентификации</h4>
+        <div class="mermaid">
+            sequenceDiagram
+            participant Client as 👤 Клиент
+            participant AuthServer as 🔑 Сервер Авторизации
+            participant ResourceServer as 📦 Сервер Ресурсов
+
+            Client->>AuthServer: 1. Логин и пароль
+            activate AuthServer
+            Note right of AuthServer: Проверяет данные, генерирует JWT
+            AuthServer-->>Client: 2. Access Token (JWT)
+            deactivate AuthServer
+
+            Note over Client, ResourceServer: Клиент сохраняет токен (в localStorage, memory)
+
+            Client->>ResourceServer: 3. GET /api/data<br/>Authorization: Bearer &lt;jwt&gt;
+            activate ResourceServer
+            Note right of ResourceServer: Проверяет подпись и срок действия токена
+            ResourceServer-->>Client: 4. Защищенные данные
+            deactivate ResourceServer
+        </div>
+        <p>Обратите внимание: после выдачи токена Сервер Ресурсов не обращается к Серверу Авторизации. Он может проверить токен самостоятельно, зная секретный ключ.</p>
+        <hr>
+        <h2>Реализация в Spring Security</h2>
+        <p>Чтобы переключить Spring Security в stateless-режим, нужно:</p>
+        <ol>
+            <li><b>Отключить управление сессиями:</b> <code>http.sessionManagement(sm -&gt; sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</code></li>
+            <li><b>Отключить CSRF-защиту:</b> <code>http.csrf(AbstractHttpConfigurer::disable)</code>. CSRF — это атака на сессии, в stateless-режиме она нерелевантна.</li>
+            <li><b>Отключить стандартную форму входа:</b> Она работает с сессиями. Вместо нее мы создадим свой эндпоинт для логина.</li>
+            <li><b>Добавить свой фильтр</b> для проверки JWT.</li>
+        </ol>
+        <pre class="language-java"><code>@Bean
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(sm -&gt; sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -&gt; auth
+            .requestMatchers("/api/auth/**").permitAll() // Эндпоинты для логина/регистрации
+            .anyRequest().authenticated()
+        )
+        // Добавляем наш фильтр перед стандартным фильтром аутентификации
+        .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
+}
+</code></pre>
+        <hr>
+        <h2>Кастомный фильтр для JWT</h2>
+        <p>Нам нужно создать свой фильтр, который будет выполняться для каждого запроса.</p>
+        <p><b>Логика фильтра:</b></p>
+        <pre class="language-java"><code>public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    // ...
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) {
+        // 1. Получить токен из заголовка Authorization
+        String token = extractTokenFrom(request);
+        if (token == null) {
+            chain.doFilter(request, response); // Если токена нет, идем дальше
+            return;
+        }
+
+        // 2. Провалидировать токен (проверить подпись и срок действия)
+        if (jwtTokenProvider.validateToken(token)) {
+            // 3. Если токен валиден, получить из него username и роли
+            String username = jwtTokenProvider.getUsername(token);
+            List&lt;GrantedAuthority&gt; authorities = jwtTokenProvider.getAuthorities(token);
+
+            // 4. Создать объект Authentication и положить его в SecurityContext
+            Authentication auth = new UsernamePasswordAuthenticationToken(username, null, authorities);
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
+
+        chain.doFilter(request, response); // Передаем запрос дальше по цепочке
+    }
+}
+</code></pre>
+        <p>После этого <code>SecurityContext</code> будет "заполнен", и <code>@PreAuthorize</code> сможет работать так же, как и в stateful-режиме.</p>
+        <hr>
+        <h2>Refresh токены</h2>
+        <p>Access Token (JWT) содержит права доступа и его нельзя отозвать. Если его украдут, злоумышленник сможет использовать его до истечения срока действия (<code>exp</code>).</p>
+        <p>Поэтому Access Token'ы делают <b>короткоживущими</b> (5-15 минут). Но заставлять пользователя логиниться каждые 5 минут — плохой UX.</p>
+        <p>Можно использовать пару токенов.</p>
+        <ul>
+            <li><b>Access Token:</b> короткоживущий, используется для доступа к ресурсам.</li>
+            <li><b>Refresh Token:</b> долгоживущий (дни, недели), хранится в безопасном месте. Его единственная цель — <b>получить новый Access Token</b>.</li>
+        </ul>
+        <p>Когда Access Token "протухает", клиент идет со своим Refresh Token'ом на специальный эндпоинт <code>/api/auth/refresh</code>. Сервер авторизации проверяет Refresh Token, и если он валиден, выпускает новую пару Access и Refresh токенов. Это позволяет реализовать сессии "помнить меня", не жертвуя безопасностью.</p>
+        <h4>Поток обновления с Refresh Token</h4>
+        <p>Эта диаграмма иллюстрирует механизм обновления токенов: когда короткоживущий Access Token истекает, клиент использует долгоживущий Refresh Token для безболезненного получения новой пары токенов без необходимости повторного ввода пароля.</p>
+        <div class="mermaid">
+            sequenceDiagram
+            participant Client as "Клиент"
+            participant AuthServer as "Сервер Авторизации"
+            participant ResourceServer as "Сервер Ресурсов"
+
+            Note over Client, ResourceServer: Начальная аутентификация...
+            Client->>AuthServer: Логин и пароль
+            AuthServer-->>Client: Access Token (живет 15 мин)<br/>Refresh Token (живет 7 дней)
+
+            Note over Client, ResourceServer: ...прошло 20 минут...
+
+            Client->>ResourceServer: Запрос с просроченным Access Token
+            activate ResourceServer
+            ResourceServer-->>Client: 401 Unauthorized (Token expired)
+            deactivate ResourceServer
+
+            Note over Client, AuthServer: Клиент понимает, что токен просрочен
+            Client->>AuthServer: Запрос на обновление с Refresh Token
+            activate AuthServer
+            Note right of AuthServer: Проверяет Refresh Token в своей БД
+            AuthServer-->>Client: Новый Access Token (на 15 мин)<br/>Новый Refresh Token (на 7 дней)
+            deactivate AuthServer
+
+            Client->>ResourceServer: Повторный запрос с НОВЫМ Access Token
+            activate ResourceServer
+            ResourceServer-->>Client: Успешный ответ
+            deactivate ResourceServer
+        </div>
+        <hr>
+        <h2>JWT в микросервисах</h2>
+        <p>JWT идеально подходит для микросервисной архитектуры.</p>
+        <ol>
+            <li>Существует отдельный <b>Сервер Авторизации</b>, который отвечает за аутентификацию и выпуск JWT.</li>
+            <li>Клиент получает токен и прикладывает его к запросам ко всем остальным микросервисам.</li>
+            <li><b>Каждый микросервис</b> (Сервер Ресурсов) может <b>самостоятельно проверить подпись токена</b>.</li>
+        </ol>
+        <p>Для этого все сервисы должны знать <b>публичный ключ</b> (если используется асимметричное шифрование RSA) или <b>общий секретный ключ</b> (если используется симметричный HMAC) Сервера Авторизации.</p>
+        <p>Это устраняет "бутылочное горлышко": сервисам не нужно при каждом запросе обращаться к Серверу Авторизации для валидации токена.</p>
+        <hr>
+        <h2>Защита ресурсов</h2>
+        <p>После того как наш JWT-фильтр успешно аутентифицировал пользователя и поместил его данные в <code>SecurityContext</code>, мы можем использовать метод-уровневую безопасность точно так же, как и раньше.</p>
+        <p><code>@PreAuthorize</code> может получить доступ к информации, которую мы "зашили" в токен.</p>
+        <p><b>В JWT Payload:</b>
+            <code>{ "sub": "john.doe", "roles": ["USER"], "department": "SALES" }</code></p>
+        <p><b>В коде микросервиса:</b></p>
+        <pre class="language-java"><code>@Service
+public class ReportService {
+
+    // Доступ разрешен, только если у пользователя в токене есть роль 'ADMIN'
+    // ИЛИ если department в токене совпадает с аргументом метода.
+    @PreAuthorize("hasRole('ADMIN') or authentication.principal.claims['department'] == #department")
+    public Report generateReportForDepartment(String department) {
+        // ...
+    }
+}
+</code></pre>
+        <p>Это позволяет реализовать очень гибкие и гранулярные правила авторизации, основанные на данных из токена.</p>
+        <hr>
+    </db-content>
+</div>
+</body>
+</html>
