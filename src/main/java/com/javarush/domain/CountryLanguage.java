@@ -1,5 +1,6 @@
 package com.javarush.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -18,25 +19,22 @@ public class CountryLanguage {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "country_id", nullable = false)
+    @JsonBackReference
     private Country country;
-
-    @Override
-    public String toString() {
-        return "CountryLanguage{" +
-                "id=" + id +
-                ", language='" + language + '\'' +
-                ", isOfficial=" + isOfficial +
-                ", percentage=" + percentage +
-                '}';
-    }
-
-    private String language;
-
     @Column(name = "is_official", columnDefinition = "BIT")
     @Type(type = "org.hibernate.type.NumericBooleanType")
     private Boolean isOfficial;
 
+    @Column(name = "language", nullable = false, length = 30)
+    private String language;
+    @Column(name = "percentage", nullable = false, precision = 4, scale = 1)
     private BigDecimal percentage;
+
+    @Override
+    public String toString() {
+        return "CountryLanguage{" + "id=" + id + ", language='" + language + '\'' + ", isOfficial=" + isOfficial + ", percentage=" + percentage + '}';
+    }
+
 
     public Integer getId() {
         return id;

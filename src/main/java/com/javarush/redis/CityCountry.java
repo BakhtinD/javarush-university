@@ -1,32 +1,34 @@
 package com.javarush.redis;
 
+import com.javarush.domain.Continent;
+import com.javarush.domain.CountryLanguage;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.Set;
 
 @Data
-public class CountryDetail {
+public class CityCountry {
+
+        private String district;
+
+        private Integer population;
 
         private Integer id;
 
-        private String code;
-
-        private Set<String> languages;
+        private Set<CountryLanguage> languages;
 
         private String alternativeCode;
 
         private String name;
 
-        private String continent;
+        private Continent continent;
 
         private String region;
 
         private BigDecimal surfaceArea;
 
         private Short independenceYear;
-
-        private Integer population;
 
         private BigDecimal lifeExpectancy;
 
@@ -42,5 +44,6 @@ public class CountryDetail {
 
         private String capital;
 
+        private String code;
 
     }

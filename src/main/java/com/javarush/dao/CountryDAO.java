@@ -15,7 +15,8 @@ public class CountryDAO {
     }
 
     public List<Country> getAll(int offset, int limit) {
-        Query<Country> query = sessionFactory.getCurrentSession().createQuery("select c from Country c", Country.class);
+        Query<Country> query = sessionFactory.getCurrentSession().createQuery("select c from Country c " +
+                "left join fetch c.capital", Country.class);
         query.setFirstResult(offset);
         query.setMaxResults(limit);
         return query.list();
