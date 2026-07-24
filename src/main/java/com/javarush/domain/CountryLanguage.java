@@ -2,12 +2,16 @@ package com.javarush.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.Type;
 
 import java.math.BigDecimal;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "country_language", schema = "world")
 public class CountryLanguage {
@@ -35,45 +39,5 @@ public class CountryLanguage {
         return "CountryLanguage{" + "id=" + id + ", language='" + language + '\'' + ", isOfficial=" + isOfficial + ", percentage=" + percentage + '}';
     }
 
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public Country getCountry() {
-        return country;
-    }
-
-    public void setCountry(Country country) {
-        this.country = country;
-    }
-
-    public String getLanguage() {
-        return language;
-    }
-
-    public void setLanguage(String language) {
-        this.language = language;
-    }
-
-    public Boolean getIsOfficial() {
-        return isOfficial;
-    }
-
-    public void setIsOfficial(Boolean isOfficial) {
-        this.isOfficial = isOfficial;
-    }
-
-    public BigDecimal getPercentage() {
-        return percentage;
-    }
-
-    public void setPercentage(BigDecimal percentage) {
-        this.percentage = percentage;
-    }
 
 }

@@ -1,30 +1,30 @@
 package com.javarush.dao;
 
 import com.javarush.domain.City;
-import org.hibernate.SessionFactory;
-import org.hibernate.query.Query;
-
 import java.util.List;
+import java.util.Optional;
+import org.hibernate.Session;
+import org.hibernate.query.Query;
 
 public class CityDAO {
 
-    private final SessionFactory sessionFactory;
-
-    public CityDAO(SessionFactory sessionFactory) {
-        this.sessionFactory = sessionFactory;
-    }
-
-    public List<City> getItems(int offset, int limit) {
-        Query<City> query = sessionFactory.getCurrentSession().createQuery("select distinct city from City city" +
+    public List<City> getItems(int offset, int limit, Session session) {
+        Query<City> query = session.createQuery("select city from City city" +
                 " left join fetch city.country country", City.class);
         query.setFirstResult(offset);
         query.setMaxResults(limit);
         return query.list();
     }
 
-    public int getTotalCount() {
-        Query<Long> query = sessionFactory.getCurrentSession().createQuery("select count(c) from City c", Long.class);
-        return Math.toIntExact(query.uniqueResult());
+    public int getTotalCount(Session session) {
+        Query<Long> query = session.createQuery("select count(c) from City c", Long.class);
+        return query.uniqueResultOptional().map(Math::toIntExact).orElse(0);
+    }
+
+    public Optional<City> getById(int id, Session session) {
+        Query<City> query = session.createQuery("select c from City c left join fetch c.country where c.id = :id", City.class);
+        query.setParameter("id", id);
+        return query.uniqueResultOptional();
     }
 
 }

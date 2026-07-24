@@ -1,10 +1,23 @@
 package com.javarush.domain;
 
-import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "city", schema = "world")
 @BatchSize(size=500)
@@ -16,6 +29,7 @@ public class City {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "country_id", nullable = false)
+    @JsonBackReference
     private Country country;
     @Column(name = "name", nullable = false, length = 35)
     private String name;
@@ -26,47 +40,7 @@ public class City {
 
     @Override
     public String toString() {
-        return "City{" + "id=" + id + ", name='" + name + '\'' + ", district='" + district + '\'' + ", population=" + population + '}';
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Country getCountry() {
-        return country;
-    }
-
-    public void setCountry(Country country) {
-        this.country = country;
-    }
-
-    public String getDistrict() {
-        return district;
-    }
-
-    public void setDistrict(String district) {
-        this.district = district;
-    }
-
-    public Integer getPopulation() {
-        return population;
-    }
-
-    public void setPopulation(Integer population) {
-        this.population = population;
+        return "City{" + "id=" + id + ", name='" + name + '\'' + ", city_district='" + district + '\'' + ", population=" + population + '}';
     }
 
 }
