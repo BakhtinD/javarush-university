@@ -46,7 +46,7 @@ public class Country {
     private String governmentForm;
     @Column(name = "head_of_state", length = 60)
     private String headOfState;
-    @OneToOne()
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "capital")
     @JsonManagedReference
     private City capital;

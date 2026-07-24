@@ -22,7 +22,7 @@ public class CityDAO {
     }
 
     public Optional<City> getById(int id, Session session) {
-        Query<City> query = session.createQuery("select c from City c left join fetch c.country where c.id = :id", City.class);
+        Query<City> query = session.createQuery("select c from City c left join fetch c.country join fetch c.country.languages where c.id = :id", City.class);
         query.setParameter("id", id);
         return query.uniqueResultOptional();
     }
