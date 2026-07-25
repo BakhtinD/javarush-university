@@ -46,9 +46,28 @@ public class Main {
         System.out.println("Total CityDetails count: " + details.size());
         System.out.println("Num of records in Redis: " + app.getCountFromRedis());
 
+        app.closeCurrentSession();
 
+        List<Integer> ids = List.of(1, 20, 45, 100, 250, 300, 400, 500, 600, 700);
+
+        long startRedis = System.currentTimeMillis();
+        app.testRedisData(ids);
+        long endRedis = System.currentTimeMillis();
+
+        long startMySql = System.currentTimeMillis();
+        app.testMySqlData(ids);
+        long endMySql = System.currentTimeMillis();
+
+        System.out.println("MySql execution time: " + (endMySql - startMySql) + " ms");
+        System.out.println("Redis execution time: " + (endRedis - startRedis) + " ms");
 
         app.shutdown();
+    }
+
+    private void closeCurrentSession() {
+        if (sessionFactory.getCurrentSession() != null) {
+            sessionFactory.getCurrentSession().close();
+        }
     }
 
     private RedisClient createRedisClient() {
@@ -62,8 +81,8 @@ public class Main {
 
     }
 
-    private List<CityDetail> transformData(List<City> countries) {
-        return countries.stream().map(city -> {
+    private List<CityDetail> transformData(List<City> cities) {
+        return cities.stream().map(city -> {
             CityDetail detail = new CityDetail();
             detail.setId(city.getId());
             detail.setName(city.getName());
@@ -125,7 +144,6 @@ public class Main {
                 .buildSessionFactory();
     }
 
-    //todo недоделано
     private void testRedisData(List<Integer> keys) {
         try (StatefulRedisConnection<String, String> connection = redisClient.connect()) {
             RedisStringCommands<String, String> stringCommands = connection.sync();
@@ -139,7 +157,6 @@ public class Main {
         }
     }
 
-    //todo недоделано
     private void testMySqlData(List<Integer> ids) {
         try (Session session = sessionFactory.getCurrentSession()) {
             session.beginTransaction();

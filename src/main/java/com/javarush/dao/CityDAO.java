@@ -21,8 +21,13 @@ public class CityDAO {
         return query.uniqueResultOptional().map(Math::toIntExact).orElse(0);
     }
 
+    public List<City> getAll(Session session) {
+        Query<City> query = session.createQuery("select c from City c left join fetch c.country", City.class);
+        return query.getResultList();
+    }
+
     public Optional<City> getById(int id, Session session) {
-        Query<City> query = session.createQuery("select c from City c left join fetch c.country join fetch c.country.languages where c.id = :id", City.class);
+        Query<City> query = session.createQuery("select c from City c left join fetch c.country where c.id = :id", City.class);
         query.setParameter("id", id);
         return query.uniqueResultOptional();
     }
